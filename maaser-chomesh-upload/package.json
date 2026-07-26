@@ -23,7 +23,8 @@
     "win": {
       "target": [
         "portable"
-      ]
+      ],
+      "artifactName": "MaaserChomesh.exe"
     }
   }
 }

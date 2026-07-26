@@ -564,7 +564,6 @@ function getFilteredEntries() {
   const to = els.toDate.value;
 
   return state.entries.filter((entry) => {
-    if (activeTab !== "all" && entry.type !== activeTab) return false;
     if (filterYear && !String(entry.date || "").startsWith(`${filterYear}-`)) return false;
     if (from && entry.date < from) return false;
     if (to && entry.date > to) return false;
@@ -637,26 +636,25 @@ function renderSummary() {
 }
 
 function renderTable() {
-  const sortedAll = state.entries.slice().sort((a, b) => (a.date < b.date ? 1 : -1));
-  const filteredAll = getFilteredEntries().slice().sort((a, b) => (a.date < b.date ? 1 : -1));
-  const incomes = sortedAll.filter((x) => x.type === "income");
-  const donations = sortedAll.filter((x) => x.type === "donation");
+  const filtered = getFilteredEntries().slice().sort((a, b) => (a.date < b.date ? 1 : -1));
+  const filteredIncome = filtered.filter((x) => x.type === "income");
+  const filteredDonation = filtered.filter((x) => x.type === "donation");
 
-  fillTableBody(els.entriesBodyAll, filteredAll);
-  fillTableBody(els.entriesBodyIncome, incomes);
-  fillTableBody(els.entriesBodyDonation, donations);
+  fillTableBody(els.entriesBodyAll, filtered);
+  fillTableBody(els.entriesBodyIncome, filteredIncome);
+  fillTableBody(els.entriesBodyDonation, filteredDonation);
 
   // Show filtered totals summary
   const isFiltered = (els.search.value || "").trim() !== "" ||
     (els.filterYear && els.filterYear.value) ||
     els.fromDate.value || els.toDate.value;
 
-  if (isFiltered && filteredAll.length > 0) {
-    const filteredIncome = filteredAll.filter((x) => x.type === "income").reduce((s, e) => s + toNumber(e.amount), 0);
-    const filteredDonations = filteredAll.filter((x) => x.type === "donation").reduce((s, e) => s + Math.max(0, toNumber(e.amount)), 0);
-    els.filterSummaryCount.textContent = `${filteredAll.length} רשומות מסוננות`;
-    els.filterSummaryIncome.textContent = `הכנסות: ${formatCurrency(filteredIncome)}`;
-    els.filterSummaryDonations.textContent = `תרומות: ${formatCurrency(filteredDonations)}`;
+  if (isFiltered && filtered.length > 0) {
+    const filteredIncomeSum = filteredIncome.reduce((s, e) => s + toNumber(e.amount), 0);
+    const filteredDonationsSum = filteredDonation.reduce((s, e) => s + Math.max(0, toNumber(e.amount)), 0);
+    els.filterSummaryCount.textContent = `${filtered.length} רשומות מסוננות`;
+    els.filterSummaryIncome.textContent = `הכנסות: ${formatCurrency(filteredIncomeSum)}`;
+    els.filterSummaryDonations.textContent = `תרומות: ${formatCurrency(filteredDonationsSum)}`;
     els.filterSummary.classList.remove("hidden");
   } else {
     els.filterSummary.classList.add("hidden");

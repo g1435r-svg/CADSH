@@ -7,6 +7,9 @@ on:
       - master
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-windows-exe:
     runs-on: windows-latest
@@ -35,3 +38,19 @@ jobs:
           name: maaser-chomesh-windows-exe
           path: maaser-chomesh-upload/dist/*.exe
           if-no-files-found: error
+
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete latest-build --yes 2>/dev/null || true
+          gh release create latest-build dist/MaaserChomesh.exe \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "MaaserChomesh - Latest Build" \
+            --notes "## הורדה ישירה
+
+לחץ על **MaaserChomesh.exe** למטה להורדה והרצה מיידית על Windows.
+
+> הקובץ נבנה אוטומטית ב-GitHub Actions." \
+            --latest
