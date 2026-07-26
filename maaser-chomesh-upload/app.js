@@ -130,6 +130,50 @@ function toNumber(value) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function isPlainObject(value) {
+  return Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function normalizeAutoProfileMode(value) {
+  return value === "off" ? "off" : "on";
+}
+
+function sanitizeMappingModel(model) {
+  if (!isPlainObject(model)) return null;
+  return {
+    excelType: model.excelType === "donation" ? "donation" : "income",
+    excelAmountMode: ["auto", "as-is", "abs", "flip"].includes(model.excelAmountMode) ? model.excelAmountMode : "auto",
+    excelHasHeader: model.excelHasHeader === "no" ? "no" : "yes",
+    mapDescription: model.mapDescription == null ? "" : String(model.mapDescription),
+    mapAmount: model.mapAmount == null ? "" : String(model.mapAmount),
+    mapDate: model.mapDate == null ? "" : String(model.mapDate),
+    mapNotes: model.mapNotes == null ? "" : String(model.mapNotes),
+    mapRecipient: model.mapRecipient == null ? "" : String(model.mapRecipient)
+  };
+}
+
+function sanitizeProfilesMap(source) {
+  if (!isPlainObject(source)) return {};
+  const result = {};
+  for (const [rawName, rawModel] of Object.entries(source)) {
+    const name = String(rawName || "").trim();
+    if (!name) continue;
+    const model = sanitizeMappingModel(rawModel);
+    if (!model) continue;
+    result[name] = model;
+  }
+  return result;
+}
+
 function toIsoDate(value) {
   if (!value) return "";
   if (typeof value === "number") {
@@ -295,9 +339,7 @@ function loadProfiles() {
   if (!raw) return;
   try {
     const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object") {
-      importProfiles = parsed;
-    }
+    importProfiles = sanitizeProfilesMap(parsed);
   } catch (_err) {
     importProfiles = {};
   }
@@ -328,7 +370,7 @@ function saveProfiles() {
 function renderProfileOptions() {
   const names = Object.keys(importProfiles).sort((a, b) => a.localeCompare(b, "he"));
   const options = ['<option value="">בחר תבנית...</option>']
-    .concat(names.map((n) => `<option value="${n}">${n}</option>`))
+    .concat(names.map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`))
     .join("");
   els.profileSelect.innerHTML = options;
   els.autoProfileMode.value = profileSettings.autoProfileMode;
@@ -451,14 +493,22 @@ function exportProfilesJson() {
 async function importProfilesJson(file) {
   const text = await file.text();
   const parsed = JSON.parse(text);
-  if (!parsed || typeof parsed !== "object" || typeof parsed.profiles !== "object") {
+  if (!isPlainObject(parsed)) {
     throw new Error("קובץ תבניות לא תקין");
   }
+  const importedProfiles = sanitizeProfilesMap(parsed.profiles);
+  const importedNames = Object.keys(importedProfiles);
+  if (!importedNames.length) {
+    throw new Error("לא נמצאו תבניות תקינות בקובץ");
+  }
 
-  importProfiles = { ...importProfiles, ...parsed.profiles };
-  if (parsed.settings && typeof parsed.settings === "object") {
-    profileSettings.defaultProfile = parsed.settings.defaultProfile || profileSettings.defaultProfile;
-    profileSettings.autoProfileMode = parsed.settings.autoProfileMode === "off" ? "off" : profileSettings.autoProfileMode;
+  importProfiles = { ...importProfiles, ...importedProfiles };
+  if (isPlainObject(parsed.settings)) {
+    profileSettings.autoProfileMode = normalizeAutoProfileMode(parsed.settings.autoProfileMode);
+    const defaultProfileName = String(parsed.settings.defaultProfile || "").trim();
+    if (defaultProfileName && importProfiles[defaultProfileName]) {
+      profileSettings.defaultProfile = defaultProfileName;
+    }
   }
 
   saveProfiles();
@@ -861,12 +911,19 @@ function exportXlsx() {
 }
 
 function normalizeBackup(raw) {
-  if (!raw || !Array.isArray(raw.entries)) {
+  const entries = Array.isArray(raw)
+    ? raw
+    : Array.isArray(raw?.entries)
+      ? raw.entries
+      : Array.isArray(raw?.data)
+        ? raw.data
+        : null;
+  if (!entries) {
     throw new Error("קובץ גיבוי לא תקין");
   }
 
   return {
-    entries: raw.entries.map((e) => ({
+    entries: entries.map((e) => ({
       id: e.id || `${Date.now()}-${Math.random()}`,
       type: e.type === "donation" ? "donation" : "income",
       date: toIsoDate(e.date) || new Date().toISOString().slice(0, 10),
@@ -876,8 +933,8 @@ function normalizeBackup(raw) {
       notes: String(e.notes || ""),
       hebrewDate: String(e.hebrewDate || toHebrewDate(toIsoDate(e.date)))
     })),
-    version: raw.version || "4.0",
-    date: raw.date || new Date().toISOString()
+    version: raw?.version || "4.0",
+    date: raw?.date || new Date().toISOString()
   };
 }
 
@@ -1327,12 +1384,12 @@ function renderParsedExcelPreview() {
       .map((entry) => {
         return `<tr>
           <td>${entry.type === "donation" ? "תרומה" : "הכנסה"}</td>
-          <td>${entry.date}</td>
-          <td>${entry.hebrewDate}</td>
-          <td>${entry.description}</td>
-          <td>${formatCurrency(entry.amount)}</td>
-          <td>${entry.recipient || "-"}</td>
-          <td>${entry.notes || "-"}</td>
+          <td>${escapeHtml(entry.date)}</td>
+          <td>${escapeHtml(entry.hebrewDate)}</td>
+          <td>${escapeHtml(entry.description)}</td>
+          <td>${escapeHtml(formatCurrency(entry.amount))}</td>
+          <td>${escapeHtml(entry.recipient || "-")}</td>
+          <td>${escapeHtml(entry.notes || "-")}</td>
         </tr>`;
       })
       .join("");
@@ -1353,7 +1410,7 @@ function renderParsedExcelPreview() {
       </table>
     `;
   } catch (err) {
-    els.excelParsedPreview.innerHTML = `<p style='color:#d93025;'>שגיאה בעיבוד: ${err.message}</p>`;
+    els.excelParsedPreview.innerHTML = `<p style='color:#d93025;'>שגיאה בעיבוד: ${escapeHtml(err.message)}</p>`;
   }
 }
 
