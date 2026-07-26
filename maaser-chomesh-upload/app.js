@@ -1606,6 +1606,10 @@ function saveAutoBackupSettings() {
   }));
 }
 
+function backupTimestamp() {
+  return new Date().toISOString().replace("T", "_").replace(/[:.]/g, "-").slice(0, 19);
+}
+
 async function runAutoBackup() {
   if (!state.entries.length) return;
   const data = JSON.stringify(state, null, 2);
@@ -1624,8 +1628,7 @@ async function runAutoBackup() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-    a.download = `auto_backup_${stamp}.json`;
+    a.download = `auto_backup_${backupTimestamp()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     showNotice("גיבוי אוטומטי הורד", "success", 3000);
@@ -1635,6 +1638,7 @@ async function runAutoBackup() {
 function startAutoBackupTimer() {
   stopAutoBackupTimer();
   if (!autoBackupEnabled) return;
+  runAutoBackup(); // immediate backup when first enabled
   autoBackupTimer = setInterval(runAutoBackup, autoBackupIntervalMinutes * 60 * 1000);
 }
 
