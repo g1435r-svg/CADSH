@@ -42,8 +42,8 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: MaaserChomesh - Latest Build
+          tag_name: build-${{ github.run_number }}
+          name: MaaserChomesh - Build ${{ github.run_number }}
           body: |
             ### מחשבון מעשרות וחומש
             קובץ EXE נייד להורדה והפעלה ישירה ב-Windows, ללא התקנה.
