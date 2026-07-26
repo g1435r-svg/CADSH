@@ -584,7 +584,7 @@ function getFilteredEntries() {
     if (activeTab !== "all" && entry.type !== activeTab) return false;
     if (filterType && entry.type !== filterType) return false;
     if (filterYear && !String(entry.date || "").startsWith(`${filterYear}-`)) return false;
-    if (filterMonth && !String(entry.date || "").slice(5, 7).startsWith(filterMonth)) return false;
+    if (filterMonth && String(entry.date || "").slice(5, 7) !== filterMonth) return false;
     if (from && entry.date < from) return false;
     if (to && entry.date > to) return false;
     const entryAmt = Math.abs(toNumber(entry.amount));
@@ -1520,7 +1520,11 @@ function bindEvents() {
   els.entriesBodyIncome.addEventListener("click", onRowActions);
   els.entriesBodyDonation.addEventListener("click", onRowActions);
 
-  [els.search, els.filterYear, els.filterMonth, els.filterType, els.filterMinAmount, els.filterMaxAmount, els.fromDate, els.toDate].forEach((el) => {
+  const filterEls = [
+    els.search, els.filterYear, els.filterMonth, els.filterType,
+    els.filterMinAmount, els.filterMaxAmount, els.fromDate, els.toDate
+  ];
+  filterEls.forEach((el) => {
     if (!el) return;
     el.addEventListener("input", renderTable);
     el.addEventListener("change", renderTable);
