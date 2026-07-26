@@ -20,8 +20,11 @@ const MAX_HISTORY = 100;
 let undoStack = [];
 let redoStack = [];
 let manualSelectedRows = new Set();
+<<<<<<< HEAD
 let sortState = { column: "date", direction: "desc" };
 const DARK_MODE_KEY = "maaser-dark-mode";
+=======
+>>>>>>> origin/main
 
 const els = {
   form: document.getElementById("entry-form"),
@@ -57,11 +60,14 @@ const els = {
   chomeshStatusNote: document.getElementById("chomesh-status-note"),
   search: document.getElementById("search"),
   filterYear: document.getElementById("filter-year"),
+<<<<<<< HEAD
   filterMonth: document.getElementById("filter-month"),
   filterType: document.getElementById("filter-type"),
   filterMinAmount: document.getElementById("filter-min-amount"),
   filterMaxAmount: document.getElementById("filter-max-amount"),
   clearFiltersBtn: document.getElementById("clear-filters-btn"),
+=======
+>>>>>>> origin/main
   fromDate: document.getElementById("from-date"),
   toDate: document.getElementById("to-date"),
   filterSummary: document.getElementById("filter-summary"),
@@ -77,7 +83,10 @@ const els = {
   importSteps: Array.from(document.querySelectorAll("#import-steps .import-step")),
   undoBtn: document.getElementById("undo-btn"),
   redoBtn: document.getElementById("redo-btn"),
+<<<<<<< HEAD
   darkModeBtn: document.getElementById("dark-mode-btn"),
+=======
+>>>>>>> origin/main
   exportBtn: document.getElementById("export-btn"),
   exportCsvBtn: document.getElementById("export-csv-btn"),
   exportXlsxBtn: document.getElementById("export-xlsx-btn"),
@@ -119,6 +128,7 @@ const els = {
   excelParsedPreview: document.getElementById("excel-parsed-preview"),
   excelLegacyPreview: document.getElementById("excel-legacy-preview"),
   importExcelBtn: document.getElementById("import-excel-btn"),
+<<<<<<< HEAD
   quickImportBtn: document.getElementById("quick-import-btn"),
   tableFooterAll: document.getElementById("table-footer-all"),
   tableFooterIncome: document.getElementById("table-footer-income"),
@@ -128,6 +138,9 @@ const els = {
   helpBtn: document.getElementById("help-btn"),
   helpModal: document.getElementById("help-modal"),
   helpModalClose: document.getElementById("help-modal-close")
+=======
+  quickImportBtn: document.getElementById("quick-import-btn")
+>>>>>>> origin/main
 };
 
 /** @type {Record<string, any>} */
@@ -576,6 +589,7 @@ function rowTypeLabel(type) {
 function getFilteredEntries() {
   const q = (els.search.value || "").trim().toLowerCase();
   const filterYear = (els.filterYear && els.filterYear.value) || "";
+<<<<<<< HEAD
   const filterMonth = (els.filterMonth && els.filterMonth.value) || "";
   const filterType = (els.filterType && els.filterType.value) || "";
   const from = els.fromDate.value;
@@ -593,6 +607,15 @@ function getFilteredEntries() {
     const entryAmt = Math.abs(toNumber(entry.amount));
     if (minAmt !== null && entryAmt < minAmt) return false;
     if (maxAmt !== null && entryAmt > maxAmt) return false;
+=======
+  const from = els.fromDate.value;
+  const to = els.toDate.value;
+
+  return state.entries.filter((entry) => {
+    if (filterYear && !String(entry.date || "").startsWith(`${filterYear}-`)) return false;
+    if (from && entry.date < from) return false;
+    if (to && entry.date > to) return false;
+>>>>>>> origin/main
 
     if (!q) return true;
     const haystack = [entry.description, entry.notes, entry.recipient].filter(Boolean).join(" ").toLowerCase();
@@ -627,6 +650,7 @@ function renderSummary() {
   els.remainingMaaser.textContent = formatCurrency(s.remainingMaaser);
   els.remainingChomesh.textContent = formatCurrency(s.remainingChomesh);
 
+<<<<<<< HEAD
   if (els.maaserProgressBar) {
     const pct = s.maaser > 0 ? Math.min(100, (s.donations / s.maaser) * 100) : 0;
     els.maaserProgressBar.style.width = `${pct.toFixed(1)}%`;
@@ -636,6 +660,8 @@ function renderSummary() {
     els.chomeshProgressBar.style.width = `${pct.toFixed(1)}%`;
   }
 
+=======
+>>>>>>> origin/main
   if (els.maaserStatusCard) {
     els.maaserStatusCard.classList.toggle("goal-complete", s.isMaaserComplete);
     els.maaserStatusCard.classList.toggle("goal-pending", s.maaser > 0 && !s.isMaaserComplete);
@@ -670,6 +696,7 @@ function renderSummary() {
   }
 }
 
+<<<<<<< HEAD
 function sortEntries(list) {
   const { column, direction } = sortState;
   const mul = direction === "asc" ? 1 : -1;
@@ -723,10 +750,21 @@ function renderTable() {
       th.classList.add(sortState.direction === "asc" ? "sort-asc" : "sort-desc");
     }
   });
+=======
+function renderTable() {
+  const filtered = getFilteredEntries().slice().sort((a, b) => (a.date < b.date ? 1 : -1));
+  const filteredIncome = filtered.filter((x) => x.type === "income");
+  const filteredDonation = filtered.filter((x) => x.type === "donation");
+
+  fillTableBody(els.entriesBodyAll, filtered);
+  fillTableBody(els.entriesBodyIncome, filteredIncome);
+  fillTableBody(els.entriesBodyDonation, filteredDonation);
+>>>>>>> origin/main
 
   // Show filtered totals summary
   const isFiltered = (els.search.value || "").trim() !== "" ||
     (els.filterYear && els.filterYear.value) ||
+<<<<<<< HEAD
     (els.filterMonth && els.filterMonth.value) ||
     (els.filterType && els.filterType.value) ||
     (els.filterMinAmount && els.filterMinAmount.value !== "") ||
@@ -739,6 +777,16 @@ function renderTable() {
     els.filterSummaryCount.textContent = `${filteredAll.length} רשומות מסוננות`;
     els.filterSummaryIncome.textContent = `הכנסות: ${formatCurrency(filteredIncome)}`;
     els.filterSummaryDonations.textContent = `תרומות: ${formatCurrency(filteredDonations)}`;
+=======
+    els.fromDate.value || els.toDate.value;
+
+  if (isFiltered && filtered.length > 0) {
+    const filteredIncomeSum = filteredIncome.reduce((s, e) => s + toNumber(e.amount), 0);
+    const filteredDonationsSum = filteredDonation.reduce((s, e) => s + Math.max(0, toNumber(e.amount)), 0);
+    els.filterSummaryCount.textContent = `${filtered.length} רשומות מסוננות`;
+    els.filterSummaryIncome.textContent = `הכנסות: ${formatCurrency(filteredIncomeSum)}`;
+    els.filterSummaryDonations.textContent = `תרומות: ${formatCurrency(filteredDonationsSum)}`;
+>>>>>>> origin/main
     els.filterSummary.classList.remove("hidden");
   } else {
     els.filterSummary.classList.add("hidden");
@@ -750,12 +798,16 @@ function fillTableBody(bodyEl, list) {
   for (const item of list) {
     const frag = els.rowTemplate.content.cloneNode(true);
     const row = frag.querySelector("tr");
+<<<<<<< HEAD
     row.classList.add(item.type === "donation" ? "row-donation" : "row-income");
     const badge = row.querySelector('[data-k="type"] .type-badge');
     if (badge) {
       badge.textContent = rowTypeLabel(item.type);
       badge.className = `type-badge badge-${item.type}`;
     }
+=======
+    row.querySelector('[data-k="type"]').textContent = rowTypeLabel(item.type);
+>>>>>>> origin/main
     row.querySelector('[data-k="date"]').textContent = item.date;
     row.querySelector('[data-k="hebrewDate"]').textContent = toHebrewDate(item.date) || item.hebrewDate || "-";
     row.querySelector('[data-k="description"]').textContent = item.description || "";
@@ -1497,6 +1549,7 @@ function rerender() {
   renderReportChart();
 }
 
+<<<<<<< HEAD
 function applyDarkMode(dark) {
   document.body.classList.toggle("dark", dark);
   if (els.darkModeBtn) els.darkModeBtn.textContent = dark ? "☀️" : "🌙";
@@ -1519,6 +1572,8 @@ function clearAllFilters() {
   renderTable();
 }
 
+=======
+>>>>>>> origin/main
 function bindEvents() {
   els.form.addEventListener("submit", onSubmit);
   els.type.addEventListener("change", toggleRecipient);
@@ -1527,11 +1582,15 @@ function bindEvents() {
   els.entriesBodyIncome.addEventListener("click", onRowActions);
   els.entriesBodyDonation.addEventListener("click", onRowActions);
 
+<<<<<<< HEAD
   const filterEls = [
     els.search, els.filterYear, els.filterMonth, els.filterType,
     els.filterMinAmount, els.filterMaxAmount, els.fromDate, els.toDate
   ];
   filterEls.forEach((el) => {
+=======
+  [els.search, els.filterYear, els.fromDate, els.toDate].forEach((el) => {
+>>>>>>> origin/main
     if (!el) return;
     el.addEventListener("input", renderTable);
     el.addEventListener("change", renderTable);
@@ -1702,6 +1761,7 @@ function bindEvents() {
 
   els.importExcelBtn.addEventListener("click", onImportExcel);
   els.quickImportBtn.addEventListener("click", onQuickImport);
+<<<<<<< HEAD
 
   // Dark mode toggle
   if (els.darkModeBtn) {
@@ -1782,6 +1842,11 @@ function init() {
     applyDarkMode(true);
   }
 
+=======
+}
+
+function init() {
+>>>>>>> origin/main
   loadState();
   state.entries = state.entries.map((e) => ({
     ...e,

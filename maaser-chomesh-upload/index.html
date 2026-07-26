@@ -8,8 +8,13 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
+<<<<<<< HEAD
     <script src="vendor/chart.umd.min.js"></script>
     <script src="vendor/xlsx.full.min.js"></script>
+=======
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+>>>>>>> origin/main
   </head>
   <body>
     <header class="topbar">
@@ -18,8 +23,11 @@
         <p>הכנסות, תרומות, יתרה להפרשה, ודוחות חכמים</p>
       </div>
       <div class="actions-inline">
+<<<<<<< HEAD
         <button id="dark-mode-btn" class="btn icon-btn" type="button" title="מצב כהה/בהיר" aria-label="מצב כהה/בהיר"><span aria-hidden="true">🌙</span></button>
         <button id="help-btn" class="btn icon-btn" type="button" title="מדריך שימוש" aria-label="פתח מדריך שימוש"><span aria-hidden="true">❓</span></button>
+=======
+>>>>>>> origin/main
         <button id="undo-btn" class="btn" type="button">בטל פעולה</button>
         <button id="redo-btn" class="btn" type="button">שחזר פעולה</button>
         <button id="export-btn" class="btn">גיבוי JSON</button>
@@ -44,8 +52,13 @@
         <h2>תמונה כללית</h2>
         <div class="stats-grid">
           <article><h3>סה"כ הכנסות</h3><p id="total-income">₪0.00</p></article>
+<<<<<<< HEAD
           <article id="maaser-status-card" class="goal-card"><h3>חובת מעשר (10%)</h3><p id="maaser-target">₪0.00</p><div class="goal-progress-wrap"><div class="goal-progress-bar" id="maaser-progress-bar"></div></div><small id="maaser-status-note" class="goal-note">יתרה למעשר: ₪0.00</small></article>
           <article id="chomesh-status-card" class="goal-card"><h3>חובת חומש (20%)</h3><p id="chomesh-target">₪0.00</p><div class="goal-progress-wrap"><div class="goal-progress-bar" id="chomesh-progress-bar"></div></div><small id="chomesh-status-note" class="goal-note">יתרה לחומש: ₪0.00</small></article>
+=======
+          <article id="maaser-status-card" class="goal-card"><h3>חובת מעשר (10%)</h3><p id="maaser-target">₪0.00</p><small id="maaser-status-note" class="goal-note">יתרה למעשר: ₪0.00</small></article>
+          <article id="chomesh-status-card" class="goal-card"><h3>חובת חומש (20%)</h3><p id="chomesh-target">₪0.00</p><small id="chomesh-status-note" class="goal-note">יתרה לחומש: ₪0.00</small></article>
+>>>>>>> origin/main
           <article><h3>סה"כ תרומות</h3><p id="total-donations">₪0.00</p></article>
           <article><h3>נותר למעשר</h3><p id="remaining-maaser">₪0.00</p></article>
           <article><h3>נותר לחומש</h3><p id="remaining-chomesh">₪0.00</p></article>
@@ -124,6 +137,7 @@
           <button class="tab-btn" data-tab="donation">תרומות</button>
         </div>
 
+<<<<<<< HEAD
         <div class="tab-panel" id="panel-all">
           <h3>כל הרשומות (כולל סינונים)</h3>
           <div class="filters table-actions-sticky">
@@ -190,22 +204,64 @@
             <span id="filter-summary-donations"></span>
           </div>
 
+=======
+        <div class="filters table-actions-sticky">
+          <label>
+            חיפוש
+            <input id="search" type="search" placeholder="תיאור / הערות / מקבל" />
+          </label>
+          <label>
+            שנה
+            <select id="filter-year">
+              <option value="">כל השנים</option>
+            </select>
+          </label>
+          <label>
+            מתאריך
+            <input id="from-date" type="date" />
+          </label>
+          <label>
+            עד תאריך
+            <input id="to-date" type="date" />
+          </label>
+        </div>
+
+        <div id="filter-summary" class="filter-summary hidden">
+          <span id="filter-summary-count"></span>
+          <span id="filter-summary-income"></span>
+          <span id="filter-summary-donations"></span>
+        </div>
+
+        <div class="tab-panel" id="panel-all">
+          <h3>כל הרשומות</h3>
+>>>>>>> origin/main
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
+<<<<<<< HEAD
                   <th data-sort="type" class="sortable">סוג <span class="sort-icon">↕</span></th>
                   <th data-sort="date" class="sortable">תאריך <span class="sort-icon">↕</span></th>
                   <th>תאריך עברי</th>
                   <th data-sort="description" class="sortable">תיאור <span class="sort-icon">↕</span></th>
                   <th data-sort="amount" class="sortable">סכום <span class="sort-icon">↕</span></th>
+=======
+                  <th>סוג</th>
+                  <th>תאריך</th>
+                  <th>תאריך עברי</th>
+                  <th>תיאור</th>
+                  <th>סכום</th>
+>>>>>>> origin/main
                   <th>מקבל</th>
                   <th>הערות</th>
                   <th>פעולות</th>
                 </tr>
               </thead>
               <tbody id="entries-body-all"></tbody>
+<<<<<<< HEAD
               <tfoot><tr><td colspan="8" id="table-footer-all" class="table-footer"></td></tr></tfoot>
+=======
+>>>>>>> origin/main
             </table>
           </div>
         </div>
@@ -216,18 +272,29 @@
             <table>
               <thead>
                 <tr>
+<<<<<<< HEAD
                   <th data-sort="type" class="sortable">סוג <span class="sort-icon">↕</span></th>
                   <th data-sort="date" class="sortable">תאריך <span class="sort-icon">↕</span></th>
                   <th>תאריך עברי</th>
                   <th data-sort="description" class="sortable">תיאור <span class="sort-icon">↕</span></th>
                   <th data-sort="amount" class="sortable">סכום <span class="sort-icon">↕</span></th>
+=======
+                  <th>סוג</th>
+                  <th>תאריך</th>
+                  <th>תאריך עברי</th>
+                  <th>תיאור</th>
+                  <th>סכום</th>
+>>>>>>> origin/main
                   <th>מקבל</th>
                   <th>הערות</th>
                   <th>פעולות</th>
                 </tr>
               </thead>
               <tbody id="entries-body-income"></tbody>
+<<<<<<< HEAD
               <tfoot><tr><td colspan="8" id="table-footer-income" class="table-footer"></td></tr></tfoot>
+=======
+>>>>>>> origin/main
             </table>
           </div>
         </div>
@@ -238,18 +305,29 @@
             <table>
               <thead>
                 <tr>
+<<<<<<< HEAD
                   <th data-sort="type" class="sortable">סוג <span class="sort-icon">↕</span></th>
                   <th data-sort="date" class="sortable">תאריך <span class="sort-icon">↕</span></th>
                   <th>תאריך עברי</th>
                   <th data-sort="description" class="sortable">תיאור <span class="sort-icon">↕</span></th>
                   <th data-sort="amount" class="sortable">סכום <span class="sort-icon">↕</span></th>
+=======
+                  <th>סוג</th>
+                  <th>תאריך</th>
+                  <th>תאריך עברי</th>
+                  <th>תיאור</th>
+                  <th>סכום</th>
+>>>>>>> origin/main
                   <th>מקבל</th>
                   <th>הערות</th>
                   <th>פעולות</th>
                 </tr>
               </thead>
               <tbody id="entries-body-donation"></tbody>
+<<<<<<< HEAD
               <tfoot><tr><td colspan="8" id="table-footer-donation" class="table-footer"></td></tr></tfoot>
+=======
+>>>>>>> origin/main
             </table>
           </div>
         </div>
@@ -367,7 +445,11 @@
 
     <template id="row-template">
       <tr>
+<<<<<<< HEAD
         <td data-k="type"><span class="type-badge"></span></td>
+=======
+        <td data-k="type"></td>
+>>>>>>> origin/main
         <td data-k="date"></td>
         <td data-k="hebrewDate"></td>
         <td data-k="description"></td>
@@ -381,6 +463,7 @@
       </tr>
     </template>
 
+<<<<<<< HEAD
     <!-- Help Modal -->
     <div id="help-modal" class="help-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">
       <div class="help-modal-box">
@@ -479,6 +562,8 @@
       </div>
     </div>
 
+=======
+>>>>>>> origin/main
     <script src="app.js"></script>
   </body>
 </html>
