@@ -114,7 +114,11 @@ const els = {
   importExcelBtn: document.getElementById("import-excel-btn"),
   quickImportBtn: document.getElementById("quick-import-btn"),
   autoBackupToggle: document.getElementById("auto-backup-toggle"),
-  autoBackupIntervalSel: document.getElementById("auto-backup-interval")
+  autoBackupIntervalSel: document.getElementById("auto-backup-interval"),
+  filterSummary: document.getElementById("filter-summary"),
+  filterIncomeTotal: document.getElementById("filter-income-total"),
+  filterDonationsTotal: document.getElementById("filter-donations-total"),
+  filterCount: document.getElementById("filter-count")
 };
 
 /** @type {Record<string, any>} */
@@ -648,6 +652,25 @@ function renderTable() {
   fillTableBody(els.entriesBodyAll, filteredAll);
   fillTableBody(els.entriesBodyIncome, incomes);
   fillTableBody(els.entriesBodyDonation, donations);
+
+  // Show filter summary when filters are active
+  const hasFilter = (els.search && els.search.value.trim()) ||
+    (els.filterYear && els.filterYear.value) ||
+    (els.fromDate && els.fromDate.value) ||
+    (els.toDate && els.toDate.value);
+
+  if (els.filterSummary) {
+    if (hasFilter) {
+      const filteredIncome = filteredAll.filter((x) => x.type === "income").reduce((s, x) => s + toNumber(x.amount), 0);
+      const filteredDonations = filteredAll.filter((x) => x.type === "donation").reduce((s, x) => s + toNumber(x.amount), 0);
+      els.filterIncomeTotal.textContent = formatCurrency(filteredIncome);
+      els.filterDonationsTotal.textContent = formatCurrency(filteredDonations);
+      els.filterCount.textContent = filteredAll.length;
+      els.filterSummary.classList.remove("hidden");
+    } else {
+      els.filterSummary.classList.add("hidden");
+    }
+  }
 }
 
 function fillTableBody(bodyEl, list) {
