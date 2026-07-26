@@ -1,5 +1,25 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, ipcMain, shell } = require("electron");
 const path = require("path");
+const fs = require("fs");
+
+function getBackupDir() {
+  return app.getPath("userData");
+}
+
+function getBackupPath() {
+  return path.join(getBackupDir(), "auto-backup.json");
+}
+
+ipcMain.handle("backup-write", async (_event, json) => {
+  const dest = getBackupPath();
+  await fs.promises.mkdir(getBackupDir(), { recursive: true });
+  await fs.promises.writeFile(dest, json, "utf8");
+  return dest;
+});
+
+ipcMain.handle("backup-open-folder", async () => {
+  shell.openPath(getBackupDir());
+});
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -10,7 +30,8 @@ function createWindow() {
     autoHideMenuBar: true,
     webPreferences: {
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      preload: path.join(__dirname, "preload.js")
     }
   });
 

@@ -1,6 +1,7 @@
 const STORAGE_KEY = "maaser-chomesh-data-v2";
 const PROFILES_KEY = "maaser-chomesh-import-profiles-v1";
 const PROFILE_SETTINGS_KEY = "maaser-chomesh-import-profile-settings-v1";
+const AUTO_BACKUP_ENABLED_KEY = "maaser-chomesh-auto-backup-enabled";
 
 /** @type {{ entries: Array<any>, version: string, date: string }} */
 let state = {
@@ -20,6 +21,8 @@ const MAX_HISTORY = 100;
 let undoStack = [];
 let redoStack = [];
 let manualSelectedRows = new Set();
+let autoBackupEnabled = localStorage.getItem(AUTO_BACKUP_ENABLED_KEY) === "true";
+let autoBackupDebounceTimer = null;
 
 const els = {
   form: document.getElementById("entry-form"),
@@ -107,7 +110,9 @@ const els = {
   excelParsedPreview: document.getElementById("excel-parsed-preview"),
   excelLegacyPreview: document.getElementById("excel-legacy-preview"),
   importExcelBtn: document.getElementById("import-excel-btn"),
-  quickImportBtn: document.getElementById("quick-import-btn")
+  quickImportBtn: document.getElementById("quick-import-btn"),
+  autoBackupToggle: document.getElementById("auto-backup-toggle"),
+  autoBackupFolderBtn: document.getElementById("auto-backup-folder-btn")
 };
 
 /** @type {Record<string, any>} */
@@ -221,6 +226,16 @@ function toHebrewDate(gregorianDate) {
 function saveState() {
   state.date = new Date().toISOString();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  scheduleAutoBackup();
+}
+
+function scheduleAutoBackup() {
+  if (!autoBackupEnabled) return;
+  if (!window.electronAPI) return;
+  if (autoBackupDebounceTimer) clearTimeout(autoBackupDebounceTimer);
+  autoBackupDebounceTimer = setTimeout(() => {
+    window.electronAPI.writeAutoBackup(JSON.stringify(state, null, 2)).catch(() => {});
+  }, 600);
 }
 
 function cloneEntries(entries) {
@@ -1569,6 +1584,20 @@ function bindEvents() {
 
   els.importExcelBtn.addEventListener("click", onImportExcel);
   els.quickImportBtn.addEventListener("click", onQuickImport);
+
+  if (els.autoBackupToggle) {
+    els.autoBackupToggle.addEventListener("change", () => {
+      autoBackupEnabled = els.autoBackupToggle.checked;
+      localStorage.setItem(AUTO_BACKUP_ENABLED_KEY, String(autoBackupEnabled));
+      showNotice(autoBackupEnabled ? "גיבוי אוטומטי הופעל" : "גיבוי אוטומטי כובה", "info", 2200);
+      if (autoBackupEnabled) scheduleAutoBackup();
+    });
+  }
+  if (els.autoBackupFolderBtn) {
+    els.autoBackupFolderBtn.addEventListener("click", () => {
+      if (window.electronAPI) window.electronAPI.openBackupFolder();
+    });
+  }
 }
 
 function init() {
@@ -1589,6 +1618,12 @@ function init() {
   rerender();
   updateSelectedRowsCounter();
   updateUndoRedoButtons();
+  if (els.autoBackupToggle) {
+    els.autoBackupToggle.checked = autoBackupEnabled;
+  }
+  if (els.autoBackupFolderBtn && !window.electronAPI) {
+    els.autoBackupFolderBtn.style.display = "none";
+  }
 }
 
 init();
