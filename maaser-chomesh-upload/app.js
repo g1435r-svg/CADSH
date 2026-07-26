@@ -20,41 +20,8 @@ const MAX_HISTORY = 100;
 let undoStack = [];
 let redoStack = [];
 let manualSelectedRows = new Set();
-
-const els = {
-  form: document.getElementById("entry-form"),
-  editingId: document.getElementById("editing-id"),
-  saveBtn: document.getElementById("save-btn"),
-  cancelEditBtn: document.getElementById("cancel-edit-btn"),
-  type: document.getElementById("type"),
-  date: document.getElementById("date"),
-  hebrewDate: document.getElementById("hebrew-date"),
-  description: document.getElementById("description"),
-  amount: document.getElementById("amount"),
-  recipient: document.getElementById("recipient"),
-  recipientWrap: document.getElementById("recipient-wrap"),
-  notes: document.getElementById("notes"),
-  entriesBodyAll: document.getElementById("entries-body-all"),
-  entriesBodyIncome: document.getElementById("entries-body-income"),
-  entriesBodyDonation: document.getElementById("entries-body-donation"),
-  tabPanels: {
-    all: document.getElementById("panel-all"),
-    income: document.getElementById("panel-income"),
-    donation: document.getElementById("panel-donation")
-  },
-  rowTemplate: document.getElementById("row-template"),
-  totalIncome: document.getElementById("total-income"),
-  maaserTarget: document.getElementById("maaser-target"),
-  chomeshTarget: document.getElementById("chomesh-target"),
-  totalDonations: document.getElementById("total-donations"),
-  remainingMaaser: document.getElementById("remaining-maaser"),
-  remainingChomesh: document.getElementById("remaining-chomesh"),
-  maaserStatusCard: document.getElementById("maaser-status-card"),
-  chomeshStatusCard: document.getElementById("chomesh-status-card"),
-  maaserStatusNote: document.getElementById("maaser-status-note"),
-  chomeshStatusNote: document.getElementById("chomesh-status-note"),
-  search: document.getElementById("search"),
-  filterYear: document.getElementById("filter-year"),
+let sortState = { column: "date", direction: "desc" };
+const DARK_MODE_KEY = "maaser-dark-mode";
   fromDate: document.getElementById("from-date"),
   toDate: document.getElementById("to-date"),
   filterSummary: document.getElementById("filter-summary"),
@@ -70,48 +37,7 @@ const els = {
   importSteps: Array.from(document.querySelectorAll("#import-steps .import-step")),
   undoBtn: document.getElementById("undo-btn"),
   redoBtn: document.getElementById("redo-btn"),
-  exportBtn: document.getElementById("export-btn"),
-  exportCsvBtn: document.getElementById("export-csv-btn"),
-  exportXlsxBtn: document.getElementById("export-xlsx-btn"),
-  importInput: document.getElementById("import-input"),
-  clearBtn: document.getElementById("clear-btn"),
-  reportYear: document.getElementById("report-year"),
-  reportMode: document.getElementById("report-mode"),
-  reportChart: document.getElementById("report-chart"),
-  excelInput: document.getElementById("excel-input"),
-  excelSheet: document.getElementById("excel-sheet"),
-  excelType: document.getElementById("excel-type"),
-  excelAmountMode: document.getElementById("excel-amount-mode"),
-  excelHasHeader: document.getElementById("excel-has-header"),
-  excelFixedDate: document.getElementById("excel-fixed-date"),
-  excelMapper: document.getElementById("excel-mapper"),
-  profileName: document.getElementById("profile-name"),
-  saveProfileBtn: document.getElementById("save-profile-btn"),
-  profileSelect: document.getElementById("profile-select"),
-  loadProfileBtn: document.getElementById("load-profile-btn"),
-  deleteProfileBtn: document.getElementById("delete-profile-btn"),
-  setDefaultProfileBtn: document.getElementById("set-default-profile-btn"),
-  clearDefaultProfileBtn: document.getElementById("clear-default-profile-btn"),
-  autoProfileMode: document.getElementById("auto-profile-mode"),
-  exportProfilesBtn: document.getElementById("export-profiles-btn"),
-  importProfilesInput: document.getElementById("import-profiles-input"),
-  mapDescription: document.getElementById("map-description"),
-  mapAmount: document.getElementById("map-amount"),
-  mapDate: document.getElementById("map-date"),
-  mapNotes: document.getElementById("map-notes"),
-  mapRecipient: document.getElementById("map-recipient"),
-  excelRowMode: document.getElementById("excel-row-mode"),
-  excelImportSearch: document.getElementById("excel-import-search"),
-  excelStartRow: document.getElementById("excel-start-row"),
-  selectAllRowsBtn: document.getElementById("select-all-rows-btn"),
-  clearAllRowsBtn: document.getElementById("clear-all-rows-btn"),
-  selectedRowsCounter: document.getElementById("selected-rows-counter"),
-  autoMapBtn: document.getElementById("auto-map-btn"),
-  excelRawPreview: document.getElementById("excel-raw-preview"),
-  excelParsedPreview: document.getElementById("excel-parsed-preview"),
-  excelLegacyPreview: document.getElementById("excel-legacy-preview"),
-  importExcelBtn: document.getElementById("import-excel-btn"),
-  quickImportBtn: document.getElementById("quick-import-btn")
+  darkModeBtn: document.getElementById("dark-mode-btn"),
 };
 
 /** @type {Record<string, any>} */
@@ -560,13 +486,23 @@ function rowTypeLabel(type) {
 function getFilteredEntries() {
   const q = (els.search.value || "").trim().toLowerCase();
   const filterYear = (els.filterYear && els.filterYear.value) || "";
+  const filterMonth = (els.filterMonth && els.filterMonth.value) || "";
+  const filterType = (els.filterType && els.filterType.value) || "";
   const from = els.fromDate.value;
   const to = els.toDate.value;
+  const minAmt = els.filterMinAmount && els.filterMinAmount.value !== "" ? Number(els.filterMinAmount.value) : null;
+  const maxAmt = els.filterMaxAmount && els.filterMaxAmount.value !== "" ? Number(els.filterMaxAmount.value) : null;
 
   return state.entries.filter((entry) => {
+    if (activeTab !== "all" && entry.type !== activeTab) return false;
+    if (filterType && entry.type !== filterType) return false;
     if (filterYear && !String(entry.date || "").startsWith(`${filterYear}-`)) return false;
+    if (filterMonth && String(entry.date || "").slice(5, 7) !== filterMonth) return false;
     if (from && entry.date < from) return false;
     if (to && entry.date > to) return false;
+    const entryAmt = Math.abs(toNumber(entry.amount));
+    if (minAmt !== null && entryAmt < minAmt) return false;
+    if (maxAmt !== null && entryAmt > maxAmt) return false;
 
     if (!q) return true;
     const haystack = [entry.description, entry.notes, entry.recipient].filter(Boolean).join(" ").toLowerCase();
@@ -601,60 +537,31 @@ function renderSummary() {
   els.remainingMaaser.textContent = formatCurrency(s.remainingMaaser);
   els.remainingChomesh.textContent = formatCurrency(s.remainingChomesh);
 
-  if (els.maaserStatusCard) {
-    els.maaserStatusCard.classList.toggle("goal-complete", s.isMaaserComplete);
-    els.maaserStatusCard.classList.toggle("goal-pending", s.maaser > 0 && !s.isMaaserComplete);
+  if (els.maaserProgressBar) {
+    const pct = s.maaser > 0 ? Math.min(100, (s.donations / s.maaser) * 100) : 0;
+    els.maaserProgressBar.style.width = `${pct.toFixed(1)}%`;
   }
-  if (els.chomeshStatusCard) {
-    els.chomeshStatusCard.classList.toggle("goal-complete", s.isChomeshComplete);
-    els.chomeshStatusCard.classList.toggle("goal-pending", s.chomesh > 0 && !s.isChomeshComplete);
-  }
-
-  if (els.maaserStatusNote) {
-    if (s.isMaaserComplete) {
-      els.maaserStatusNote.textContent = s.surplusMaaser > 0
-        ? `הושלם. יתרה מעבר למעשר: ${formatCurrency(s.surplusMaaser)}`
-        : "הושלם.";
-    } else if (s.maaser > 0) {
-      els.maaserStatusNote.textContent = `יתרה למעשר: ${formatCurrency(s.remainingMaaser)}`;
-    } else {
-      els.maaserStatusNote.textContent = "אין חובת מעשר כרגע.";
-    }
+  if (els.chomeshProgressBar) {
+    const pct = s.chomesh > 0 ? Math.min(100, (s.donations / s.chomesh) * 100) : 0;
+    els.chomeshProgressBar.style.width = `${pct.toFixed(1)}%`;
   }
 
-  if (els.chomeshStatusNote) {
-    if (s.isChomeshComplete) {
-      els.chomeshStatusNote.textContent = s.surplusChomesh > 0
-        ? `הושלם. יתרה מעבר לחומש: ${formatCurrency(s.surplusChomesh)}`
-        : "הושלם.";
-    } else if (s.chomesh > 0) {
-      els.chomeshStatusNote.textContent = `יתרה לחומש: ${formatCurrency(s.remainingChomesh)}`;
-    } else {
-      els.chomeshStatusNote.textContent = "אין חובת חומש כרגע.";
-    }
-  }
-}
-
-function renderTable() {
-  const filtered = getFilteredEntries().slice().sort((a, b) => (a.date < b.date ? 1 : -1));
-  const filteredIncome = filtered.filter((x) => x.type === "income");
-  const filteredDonation = filtered.filter((x) => x.type === "donation");
-
-  fillTableBody(els.entriesBodyAll, filtered);
-  fillTableBody(els.entriesBodyIncome, filteredIncome);
-  fillTableBody(els.entriesBodyDonation, filteredDonation);
 
   // Show filtered totals summary
   const isFiltered = (els.search.value || "").trim() !== "" ||
     (els.filterYear && els.filterYear.value) ||
+    (els.filterMonth && els.filterMonth.value) ||
+    (els.filterType && els.filterType.value) ||
+    (els.filterMinAmount && els.filterMinAmount.value !== "") ||
+    (els.filterMaxAmount && els.filterMaxAmount.value !== "") ||
     els.fromDate.value || els.toDate.value;
 
-  if (isFiltered && filtered.length > 0) {
-    const filteredIncomeSum = filteredIncome.reduce((s, e) => s + toNumber(e.amount), 0);
-    const filteredDonationsSum = filteredDonation.reduce((s, e) => s + Math.max(0, toNumber(e.amount)), 0);
-    els.filterSummaryCount.textContent = `${filtered.length} רשומות מסוננות`;
-    els.filterSummaryIncome.textContent = `הכנסות: ${formatCurrency(filteredIncomeSum)}`;
-    els.filterSummaryDonations.textContent = `תרומות: ${formatCurrency(filteredDonationsSum)}`;
+  if (isFiltered && filteredAll.length > 0) {
+    const filteredIncome = filteredAll.filter((x) => x.type === "income").reduce((s, e) => s + toNumber(e.amount), 0);
+    const filteredDonations = filteredAll.filter((x) => x.type === "donation").reduce((s, e) => s + Math.max(0, toNumber(e.amount)), 0);
+    els.filterSummaryCount.textContent = `${filteredAll.length} רשומות מסוננות`;
+    els.filterSummaryIncome.textContent = `הכנסות: ${formatCurrency(filteredIncome)}`;
+    els.filterSummaryDonations.textContent = `תרומות: ${formatCurrency(filteredDonations)}`;
     els.filterSummary.classList.remove("hidden");
   } else {
     els.filterSummary.classList.add("hidden");
@@ -666,7 +573,12 @@ function fillTableBody(bodyEl, list) {
   for (const item of list) {
     const frag = els.rowTemplate.content.cloneNode(true);
     const row = frag.querySelector("tr");
-    row.querySelector('[data-k="type"]').textContent = rowTypeLabel(item.type);
+    row.classList.add(item.type === "donation" ? "row-donation" : "row-income");
+    const badge = row.querySelector('[data-k="type"] .type-badge');
+    if (badge) {
+      badge.textContent = rowTypeLabel(item.type);
+      badge.className = `type-badge badge-${item.type}`;
+    }
     row.querySelector('[data-k="date"]').textContent = item.date;
     row.querySelector('[data-k="hebrewDate"]').textContent = toHebrewDate(item.date) || item.hebrewDate || "-";
     row.querySelector('[data-k="description"]').textContent = item.description || "";
@@ -1408,15 +1320,28 @@ function rerender() {
   renderReportChart();
 }
 
-function bindEvents() {
-  els.form.addEventListener("submit", onSubmit);
-  els.type.addEventListener("change", toggleRecipient);
-  els.cancelEditBtn.addEventListener("click", resetFormToCreateMode);
-  els.entriesBodyAll.addEventListener("click", onRowActions);
-  els.entriesBodyIncome.addEventListener("click", onRowActions);
-  els.entriesBodyDonation.addEventListener("click", onRowActions);
+function applyDarkMode(dark) {
+  document.body.classList.toggle("dark", dark);
+  if (els.darkModeBtn) els.darkModeBtn.textContent = dark ? "☀️" : "🌙";
+  localStorage.setItem(DARK_MODE_KEY, dark ? "1" : "0");
+}
 
-  [els.search, els.filterYear, els.fromDate, els.toDate].forEach((el) => {
+function toggleDarkMode() {
+  applyDarkMode(!document.body.classList.contains("dark"));
+}
+
+function clearAllFilters() {
+  if (els.search) els.search.value = "";
+  if (els.filterYear) els.filterYear.value = "";
+  if (els.filterMonth) els.filterMonth.value = "";
+  if (els.filterType) els.filterType.value = "";
+  if (els.fromDate) els.fromDate.value = "";
+  if (els.toDate) els.toDate.value = "";
+  if (els.filterMinAmount) els.filterMinAmount.value = "";
+  if (els.filterMaxAmount) els.filterMaxAmount.value = "";
+  renderTable();
+}
+
     if (!el) return;
     el.addEventListener("input", renderTable);
     el.addEventListener("change", renderTable);
@@ -1587,9 +1512,86 @@ function bindEvents() {
 
   els.importExcelBtn.addEventListener("click", onImportExcel);
   els.quickImportBtn.addEventListener("click", onQuickImport);
+
+  // Dark mode toggle
+  if (els.darkModeBtn) {
+    els.darkModeBtn.addEventListener("click", toggleDarkMode);
+  }
+
+  // Help modal
+  if (els.helpBtn) {
+    els.helpBtn.addEventListener("click", () => {
+      els.helpModal.classList.remove("hidden");
+      els.helpModalClose.focus();
+    });
+  }
+  if (els.helpModalClose) {
+    els.helpModalClose.addEventListener("click", () => {
+      els.helpModal.classList.add("hidden");
+    });
+  }
+  if (els.helpModal) {
+    els.helpModal.addEventListener("click", (e) => {
+      if (e.target === els.helpModal) els.helpModal.classList.add("hidden");
+    });
+  }
+
+  // Clear all filters
+  if (els.clearFiltersBtn) {
+    els.clearFiltersBtn.addEventListener("click", clearAllFilters);
+  }
+
+  // Column sort on table headers
+  document.querySelectorAll("th.sortable").forEach((th) => {
+    th.addEventListener("click", () => {
+      const col = th.dataset.sort;
+      if (!col) return;
+      if (sortState.column === col) {
+        sortState.direction = sortState.direction === "asc" ? "desc" : "asc";
+      } else {
+        sortState.column = col;
+        sortState.direction = col === "date" ? "desc" : "asc";
+      }
+      renderTable();
+    });
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener("keydown", (e) => {
+    const tag = (document.activeElement && document.activeElement.tagName) || "";
+    const isInput = ["INPUT", "TEXTAREA", "SELECT"].includes(tag);
+
+    if (e.key === "Escape" && els.helpModal && !els.helpModal.classList.contains("hidden")) {
+      els.helpModal.classList.add("hidden");
+      return;
+    }
+
+    if (e.key === "Escape" && els.editingId.value) {
+      resetFormToCreateMode();
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && !isInput) {
+      if (e.key === "z") {
+        e.preventDefault();
+        undoLastAction();
+      } else if (e.key === "y") {
+        e.preventDefault();
+        redoLastAction();
+      }
+    }
+  });
 }
 
 function init() {
+  // Load dark mode preference
+  const savedDark = localStorage.getItem(DARK_MODE_KEY);
+  if (savedDark === "1") {
+    applyDarkMode(true);
+  } else if (savedDark === null && window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
+    applyDarkMode(true);
+  }
+
   loadState();
   state.entries = state.entries.map((e) => ({
     ...e,

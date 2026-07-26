@@ -1,10 +1,13 @@
 name: Build Windows EXE
+# Builds a portable offline EXE for Windows (chart.js + xlsx bundled locally)
+# Updated: 2026-07-26b
 
 on:
   push:
     branches:
       - main
       - master
+      - copilot/**
   workflow_dispatch:
 
 permissions:
@@ -39,18 +42,16 @@ jobs:
           path: maaser-chomesh-upload/dist/*.exe
           if-no-files-found: error
 
-      - name: Publish GitHub Release
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release delete latest-build --yes 2>/dev/null || true
-          gh release create latest-build dist/MaaserChomesh.exe \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "MaaserChomesh - Latest Build" \
-            --notes "## הורדה ישירה
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: MaaserChomesh - Build ${{ github.run_number }}
+          body: |
+            ### מחשבון מעשרות וחומש
+            קובץ EXE נייד להורדה והפעלה ישירה ב-Windows, ללא התקנה.
 
-לחץ על **MaaserChomesh.exe** למטה להורדה והרצה מיידית על Windows.
-
-> הקובץ נבנה אוטומטית ב-GitHub Actions." \
-            --latest
+            **הורדה:** לחץ על הקובץ `MaaserChomesh*.exe` מטה.
+          files: maaser-chomesh-upload/dist/*.exe
+          make_latest: true
