@@ -696,8 +696,12 @@ function renderTable() {
 
   // Update table footers
   if (els.tableFooterAll) {
-    const incomeSum = filteredAll.filter((x) => x.type === "income").reduce((s, e) => s + toNumber(e.amount), 0);
-    const donSum = filteredAll.filter((x) => x.type === "donation").reduce((s, e) => s + Math.max(0, toNumber(e.amount)), 0);
+    let incomeSum = 0;
+    let donSum = 0;
+    for (const e of filteredAll) {
+      if (e.type === "income") incomeSum += toNumber(e.amount);
+      else donSum += Math.max(0, toNumber(e.amount));
+    }
     els.tableFooterAll.textContent = `${filteredAll.length} רשומות | הכנסות: ${formatCurrency(incomeSum)} | תרומות: ${formatCurrency(donSum)}`;
   }
   if (els.tableFooterIncome) {
@@ -1748,7 +1752,7 @@ function init() {
   const savedDark = localStorage.getItem(DARK_MODE_KEY);
   if (savedDark === "1") {
     applyDarkMode(true);
-  } else if (savedDark === null && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+  } else if (savedDark === null && window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
     applyDarkMode(true);
   }
 
