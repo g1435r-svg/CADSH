@@ -19,6 +19,7 @@
       </div>
       <div class="actions-inline">
         <button id="dark-mode-btn" class="btn icon-btn" type="button" title="מצב כהה/בהיר" aria-label="מצב כהה/בהיר">🌙</button>
+        <button id="help-btn" class="btn icon-btn" type="button" title="מדריך שימוש" aria-label="פתח מדריך שימוש">❓</button>
         <button id="undo-btn" class="btn" type="button">בטל פעולה</button>
         <button id="redo-btn" class="btn" type="button">שחזר פעולה</button>
         <button id="export-btn" class="btn">גיבוי JSON</button>
@@ -379,6 +380,104 @@
         </td>
       </tr>
     </template>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="help-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">
+      <div class="help-modal-box">
+        <div class="help-modal-header">
+          <h2 id="help-modal-title">מדריך שימוש — מחשבון מעשרות וחומש</h2>
+          <button id="help-modal-close" class="btn icon-btn" type="button" aria-label="סגור מדריך">✕</button>
+        </div>
+        <div class="help-modal-body">
+
+          <section class="help-section">
+            <h3>🔗 קישורים</h3>
+            <ul class="help-links">
+              <li><a href="https://github.com/g1435r-svg/CADSH" target="_blank" rel="noopener noreferrer">קוד המקור ב-GitHub</a></li>
+              <li><a href="https://github.com/g1435r-svg/CADSH/issues" target="_blank" rel="noopener noreferrer">דיווח על בעיות / הצעות שיפור</a></li>
+            </ul>
+          </section>
+
+          <section class="help-section">
+            <h3>📊 תמונה כללית (ראש הדף)</h3>
+            <p>כרטיסי הסיכום מתעדכנים אוטומטית. אין ללחוץ עליהם — הם לקריאה בלבד.</p>
+          </section>
+
+          <section class="help-section">
+            <h3>➕ הוספת הכנסה או תרומה</h3>
+            <ol>
+              <li>בחר <strong>סוג פעולה</strong> — "הכנסה" או "תרומה".</li>
+              <li>מלא <strong>תאריך</strong>, <strong>תיאור</strong> ו<strong>סכום</strong>.</li>
+              <li>לחץ <strong>"שמור פעולה"</strong> (כפתור כחול).</li>
+            </ol>
+          </section>
+
+          <section class="help-section">
+            <h3>✏️ עריכה ומחיקה של רשומה</h3>
+            <ol>
+              <li>מצא את הרשומה בטבלה למטה.</li>
+              <li>לחץ <strong>"ערוך"</strong> כדי לטעון אותה לטופס ולערוך.</li>
+              <li>לחץ <strong>"מחק"</strong> (אדום) כדי למחוק אותה.</li>
+            </ol>
+          </section>
+
+          <section class="help-section">
+            <h3>🔍 סינון וחיפוש</h3>
+            <ol>
+              <li>לחץ על לשונית <strong>"כל הרשומות"</strong> / <strong>"הכנסות"</strong> / <strong>"תרומות"</strong> לסינון לפי סוג.</li>
+              <li>השתמש בשדה <strong>חיפוש</strong> לחיפוש חופשי.</li>
+              <li>בחר שנה, חודש, תאריכים או טווח סכומים לסינון מדויק.</li>
+              <li>לחץ <strong>"נקה פילטרים"</strong> לאיפוס הכל.</li>
+            </ol>
+          </section>
+
+          <section class="help-section">
+            <h3>📈 דוח חודשי / שנתי</h3>
+            <ol>
+              <li>בחר <strong>שנה</strong> מהרשימה.</li>
+              <li>בחר <strong>סוג דוח</strong> — "חודשי" או "שנתי".</li>
+              <li>הגרף יתעדכן אוטומטית.</li>
+            </ol>
+          </section>
+
+          <section class="help-section">
+            <h3>💾 גיבוי וייבוא</h3>
+            <ul>
+              <li>לחץ <strong>"גיבוי JSON"</strong> לשמירת כל הנתונים לקובץ.</li>
+              <li>לחץ <strong>"ייבוא גיבוי"</strong> לשחזור מקובץ גיבוי.</li>
+              <li>לחץ <strong>"ייצוא CSV"</strong> או <strong>"ייצוא XLSX"</strong> לייצוא לגיליון אלקטרוני.</li>
+            </ul>
+          </section>
+
+          <section class="help-section">
+            <h3>↩️ ביטול / שחזור</h3>
+            <ul>
+              <li>לחץ <strong>"בטל פעולה"</strong> לביטול הפעולה האחרונה.</li>
+              <li>לחץ <strong>"שחזר פעולה"</strong> לשחזור.</li>
+              <li>קיצור מקלדת: <kbd>Ctrl+Z</kbd> לביטול, <kbd>Ctrl+Y</kbd> לשחזור.</li>
+            </ul>
+          </section>
+
+          <section class="help-section">
+            <h3>📥 ייבוא מאקסל (בנק / אשראי)</h3>
+            <ol>
+              <li>לחץ על לשונית <strong>"ייבוא אקסל"</strong> בסרגל הניווט.</li>
+              <li>לחץ <strong>"בחר קובץ Excel"</strong> ובחר קובץ xlsx/xls/csv.</li>
+              <li>בחר <strong>גליון</strong>, <strong>סוג פעולה</strong> ואפשרויות נוספות.</li>
+              <li>מפה את הטורים (תיאור, סכום, תאריך וכו') במקטע המיפוי.</li>
+              <li>סמן את השורות לייבוא או לחץ <strong>"בחר הכל"</strong>.</li>
+              <li>לחץ <strong>"ייבוא השורות שנבחרו"</strong> לסיום.</li>
+            </ol>
+          </section>
+
+          <section class="help-section">
+            <h3>🌙 מצב כהה</h3>
+            <p>לחץ על <strong>🌙</strong> בפינה כדי לעבור בין מצב בהיר לכהה.</p>
+          </section>
+
+        </div>
+      </div>
+    </div>
 
     <script src="app.js"></script>
   </body>

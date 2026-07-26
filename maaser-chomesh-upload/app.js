@@ -124,7 +124,10 @@ const els = {
   tableFooterIncome: document.getElementById("table-footer-income"),
   tableFooterDonation: document.getElementById("table-footer-donation"),
   maaserProgressBar: document.getElementById("maaser-progress-bar"),
-  chomeshProgressBar: document.getElementById("chomesh-progress-bar")
+  chomeshProgressBar: document.getElementById("chomesh-progress-bar"),
+  helpBtn: document.getElementById("help-btn"),
+  helpModal: document.getElementById("help-modal"),
+  helpModalClose: document.getElementById("help-modal-close")
 };
 
 /** @type {Record<string, any>} */
@@ -1705,6 +1708,24 @@ function bindEvents() {
     els.darkModeBtn.addEventListener("click", toggleDarkMode);
   }
 
+  // Help modal
+  if (els.helpBtn) {
+    els.helpBtn.addEventListener("click", () => {
+      els.helpModal.classList.remove("hidden");
+      els.helpModalClose.focus();
+    });
+  }
+  if (els.helpModalClose) {
+    els.helpModalClose.addEventListener("click", () => {
+      els.helpModal.classList.add("hidden");
+    });
+  }
+  if (els.helpModal) {
+    els.helpModal.addEventListener("click", (e) => {
+      if (e.target === els.helpModal) els.helpModal.classList.add("hidden");
+    });
+  }
+
   // Clear all filters
   if (els.clearFiltersBtn) {
     els.clearFiltersBtn.addEventListener("click", clearAllFilters);
@@ -1729,6 +1750,11 @@ function bindEvents() {
   document.addEventListener("keydown", (e) => {
     const tag = (document.activeElement && document.activeElement.tagName) || "";
     const isInput = ["INPUT", "TEXTAREA", "SELECT"].includes(tag);
+
+    if (e.key === "Escape" && els.helpModal && !els.helpModal.classList.contains("hidden")) {
+      els.helpModal.classList.add("hidden");
+      return;
+    }
 
     if (e.key === "Escape" && els.editingId.value) {
       resetFormToCreateMode();
