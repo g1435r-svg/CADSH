@@ -57,6 +57,10 @@ const els = {
   filterYear: document.getElementById("filter-year"),
   fromDate: document.getElementById("from-date"),
   toDate: document.getElementById("to-date"),
+  filterSummary: document.getElementById("filter-summary"),
+  filterSummaryCount: document.getElementById("filter-summary-count"),
+  filterSummaryIncome: document.getElementById("filter-summary-income"),
+  filterSummaryDonations: document.getElementById("filter-summary-donations"),
   tabBtns: Array.from(document.querySelectorAll(".tab-btn")),
   topTabMain: document.getElementById("top-tab-main"),
   topTabImport: document.getElementById("top-tab-import"),
@@ -641,6 +645,22 @@ function renderTable() {
   fillTableBody(els.entriesBodyAll, filteredAll);
   fillTableBody(els.entriesBodyIncome, incomes);
   fillTableBody(els.entriesBodyDonation, donations);
+
+  // Show filtered totals summary
+  const isFiltered = (els.search.value || "").trim() !== "" ||
+    (els.filterYear && els.filterYear.value) ||
+    els.fromDate.value || els.toDate.value;
+
+  if (isFiltered && filteredAll.length > 0) {
+    const filteredIncome = filteredAll.filter((x) => x.type === "income").reduce((s, e) => s + toNumber(e.amount), 0);
+    const filteredDonations = filteredAll.filter((x) => x.type === "donation").reduce((s, e) => s + Math.max(0, toNumber(e.amount)), 0);
+    els.filterSummaryCount.textContent = `${filteredAll.length} רשומות מסוננות`;
+    els.filterSummaryIncome.textContent = `הכנסות: ${formatCurrency(filteredIncome)}`;
+    els.filterSummaryDonations.textContent = `תרומות: ${formatCurrency(filteredDonations)}`;
+    els.filterSummary.classList.remove("hidden");
+  } else {
+    els.filterSummary.classList.add("hidden");
+  }
 }
 
 function fillTableBody(bodyEl, list) {
