@@ -7,6 +7,9 @@ on:
       - master
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-windows-exe:
     runs-on: windows-latest
@@ -35,3 +38,17 @@ jobs:
           name: maaser-chomesh-windows-exe
           path: maaser-chomesh-upload/dist/*.exe
           if-no-files-found: error
+
+      - name: Create or update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "MaaserChomesh - גרסה אחרונה"
+          body: |
+            ## הורדה ישירה
+
+            לחץ על הקובץ למטה להורדת האפליקציה:
+
+            > עודכן אוטומטית בכל שינוי בקוד
+          files: maaser-chomesh-upload/dist/*.exe
+          make_latest: true
