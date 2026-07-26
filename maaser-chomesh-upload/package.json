@@ -4,7 +4,6 @@
   "description": "מחשבון מעשרות וחומש עם גיבוי",
   "main": "electron-main.js",
   "scripts": {
-<<<<<<< HEAD
     "vendor:copy": "node scripts/copy-vendor.js",
     "prestart": "npm run vendor:copy",
     "start": "electron .",
@@ -15,11 +14,6 @@
     "chart.js": "4.4.3",
     "xlsx": "0.18.5"
   },
-=======
-    "start": "electron .",
-    "build:exe": "electron-builder --win --x64"
-  },
->>>>>>> origin/main
   "devDependencies": {
     "electron": "^31.2.1",
     "electron-builder": "^24.13.3"
@@ -31,22 +25,14 @@
       "index.html",
       "styles.css",
       "app.js",
-<<<<<<< HEAD
       "electron-main.js",
       "vendor/**"
-=======
-      "electron-main.js"
->>>>>>> origin/main
     ],
     "win": {
       "target": [
         "portable"
-<<<<<<< HEAD
-      ]
-=======
       ],
       "artifactName": "MaaserChomesh.exe"
->>>>>>> origin/main
     }
   }
 }

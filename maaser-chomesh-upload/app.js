@@ -20,54 +20,8 @@ const MAX_HISTORY = 100;
 let undoStack = [];
 let redoStack = [];
 let manualSelectedRows = new Set();
-<<<<<<< HEAD
 let sortState = { column: "date", direction: "desc" };
 const DARK_MODE_KEY = "maaser-dark-mode";
-=======
->>>>>>> origin/main
-
-const els = {
-  form: document.getElementById("entry-form"),
-  editingId: document.getElementById("editing-id"),
-  saveBtn: document.getElementById("save-btn"),
-  cancelEditBtn: document.getElementById("cancel-edit-btn"),
-  type: document.getElementById("type"),
-  date: document.getElementById("date"),
-  hebrewDate: document.getElementById("hebrew-date"),
-  description: document.getElementById("description"),
-  amount: document.getElementById("amount"),
-  recipient: document.getElementById("recipient"),
-  recipientWrap: document.getElementById("recipient-wrap"),
-  notes: document.getElementById("notes"),
-  entriesBodyAll: document.getElementById("entries-body-all"),
-  entriesBodyIncome: document.getElementById("entries-body-income"),
-  entriesBodyDonation: document.getElementById("entries-body-donation"),
-  tabPanels: {
-    all: document.getElementById("panel-all"),
-    income: document.getElementById("panel-income"),
-    donation: document.getElementById("panel-donation")
-  },
-  rowTemplate: document.getElementById("row-template"),
-  totalIncome: document.getElementById("total-income"),
-  maaserTarget: document.getElementById("maaser-target"),
-  chomeshTarget: document.getElementById("chomesh-target"),
-  totalDonations: document.getElementById("total-donations"),
-  remainingMaaser: document.getElementById("remaining-maaser"),
-  remainingChomesh: document.getElementById("remaining-chomesh"),
-  maaserStatusCard: document.getElementById("maaser-status-card"),
-  chomeshStatusCard: document.getElementById("chomesh-status-card"),
-  maaserStatusNote: document.getElementById("maaser-status-note"),
-  chomeshStatusNote: document.getElementById("chomesh-status-note"),
-  search: document.getElementById("search"),
-  filterYear: document.getElementById("filter-year"),
-<<<<<<< HEAD
-  filterMonth: document.getElementById("filter-month"),
-  filterType: document.getElementById("filter-type"),
-  filterMinAmount: document.getElementById("filter-min-amount"),
-  filterMaxAmount: document.getElementById("filter-max-amount"),
-  clearFiltersBtn: document.getElementById("clear-filters-btn"),
-=======
->>>>>>> origin/main
   fromDate: document.getElementById("from-date"),
   toDate: document.getElementById("to-date"),
   filterSummary: document.getElementById("filter-summary"),
@@ -83,64 +37,7 @@ const els = {
   importSteps: Array.from(document.querySelectorAll("#import-steps .import-step")),
   undoBtn: document.getElementById("undo-btn"),
   redoBtn: document.getElementById("redo-btn"),
-<<<<<<< HEAD
   darkModeBtn: document.getElementById("dark-mode-btn"),
-=======
->>>>>>> origin/main
-  exportBtn: document.getElementById("export-btn"),
-  exportCsvBtn: document.getElementById("export-csv-btn"),
-  exportXlsxBtn: document.getElementById("export-xlsx-btn"),
-  importInput: document.getElementById("import-input"),
-  clearBtn: document.getElementById("clear-btn"),
-  reportYear: document.getElementById("report-year"),
-  reportMode: document.getElementById("report-mode"),
-  reportChart: document.getElementById("report-chart"),
-  excelInput: document.getElementById("excel-input"),
-  excelSheet: document.getElementById("excel-sheet"),
-  excelType: document.getElementById("excel-type"),
-  excelAmountMode: document.getElementById("excel-amount-mode"),
-  excelHasHeader: document.getElementById("excel-has-header"),
-  excelFixedDate: document.getElementById("excel-fixed-date"),
-  excelMapper: document.getElementById("excel-mapper"),
-  profileName: document.getElementById("profile-name"),
-  saveProfileBtn: document.getElementById("save-profile-btn"),
-  profileSelect: document.getElementById("profile-select"),
-  loadProfileBtn: document.getElementById("load-profile-btn"),
-  deleteProfileBtn: document.getElementById("delete-profile-btn"),
-  setDefaultProfileBtn: document.getElementById("set-default-profile-btn"),
-  clearDefaultProfileBtn: document.getElementById("clear-default-profile-btn"),
-  autoProfileMode: document.getElementById("auto-profile-mode"),
-  exportProfilesBtn: document.getElementById("export-profiles-btn"),
-  importProfilesInput: document.getElementById("import-profiles-input"),
-  mapDescription: document.getElementById("map-description"),
-  mapAmount: document.getElementById("map-amount"),
-  mapDate: document.getElementById("map-date"),
-  mapNotes: document.getElementById("map-notes"),
-  mapRecipient: document.getElementById("map-recipient"),
-  excelRowMode: document.getElementById("excel-row-mode"),
-  excelImportSearch: document.getElementById("excel-import-search"),
-  excelStartRow: document.getElementById("excel-start-row"),
-  selectAllRowsBtn: document.getElementById("select-all-rows-btn"),
-  clearAllRowsBtn: document.getElementById("clear-all-rows-btn"),
-  selectedRowsCounter: document.getElementById("selected-rows-counter"),
-  autoMapBtn: document.getElementById("auto-map-btn"),
-  excelRawPreview: document.getElementById("excel-raw-preview"),
-  excelParsedPreview: document.getElementById("excel-parsed-preview"),
-  excelLegacyPreview: document.getElementById("excel-legacy-preview"),
-  importExcelBtn: document.getElementById("import-excel-btn"),
-<<<<<<< HEAD
-  quickImportBtn: document.getElementById("quick-import-btn"),
-  tableFooterAll: document.getElementById("table-footer-all"),
-  tableFooterIncome: document.getElementById("table-footer-income"),
-  tableFooterDonation: document.getElementById("table-footer-donation"),
-  maaserProgressBar: document.getElementById("maaser-progress-bar"),
-  chomeshProgressBar: document.getElementById("chomesh-progress-bar"),
-  helpBtn: document.getElementById("help-btn"),
-  helpModal: document.getElementById("help-modal"),
-  helpModalClose: document.getElementById("help-modal-close")
-=======
-  quickImportBtn: document.getElementById("quick-import-btn")
->>>>>>> origin/main
 };
 
 /** @type {Record<string, any>} */
@@ -589,7 +486,6 @@ function rowTypeLabel(type) {
 function getFilteredEntries() {
   const q = (els.search.value || "").trim().toLowerCase();
   const filterYear = (els.filterYear && els.filterYear.value) || "";
-<<<<<<< HEAD
   const filterMonth = (els.filterMonth && els.filterMonth.value) || "";
   const filterType = (els.filterType && els.filterType.value) || "";
   const from = els.fromDate.value;
@@ -607,15 +503,6 @@ function getFilteredEntries() {
     const entryAmt = Math.abs(toNumber(entry.amount));
     if (minAmt !== null && entryAmt < minAmt) return false;
     if (maxAmt !== null && entryAmt > maxAmt) return false;
-=======
-  const from = els.fromDate.value;
-  const to = els.toDate.value;
-
-  return state.entries.filter((entry) => {
-    if (filterYear && !String(entry.date || "").startsWith(`${filterYear}-`)) return false;
-    if (from && entry.date < from) return false;
-    if (to && entry.date > to) return false;
->>>>>>> origin/main
 
     if (!q) return true;
     const haystack = [entry.description, entry.notes, entry.recipient].filter(Boolean).join(" ").toLowerCase();
@@ -650,7 +537,6 @@ function renderSummary() {
   els.remainingMaaser.textContent = formatCurrency(s.remainingMaaser);
   els.remainingChomesh.textContent = formatCurrency(s.remainingChomesh);
 
-<<<<<<< HEAD
   if (els.maaserProgressBar) {
     const pct = s.maaser > 0 ? Math.min(100, (s.donations / s.maaser) * 100) : 0;
     els.maaserProgressBar.style.width = `${pct.toFixed(1)}%`;
@@ -660,111 +546,10 @@ function renderSummary() {
     els.chomeshProgressBar.style.width = `${pct.toFixed(1)}%`;
   }
 
-=======
->>>>>>> origin/main
-  if (els.maaserStatusCard) {
-    els.maaserStatusCard.classList.toggle("goal-complete", s.isMaaserComplete);
-    els.maaserStatusCard.classList.toggle("goal-pending", s.maaser > 0 && !s.isMaaserComplete);
-  }
-  if (els.chomeshStatusCard) {
-    els.chomeshStatusCard.classList.toggle("goal-complete", s.isChomeshComplete);
-    els.chomeshStatusCard.classList.toggle("goal-pending", s.chomesh > 0 && !s.isChomeshComplete);
-  }
-
-  if (els.maaserStatusNote) {
-    if (s.isMaaserComplete) {
-      els.maaserStatusNote.textContent = s.surplusMaaser > 0
-        ? `הושלם. יתרה מעבר למעשר: ${formatCurrency(s.surplusMaaser)}`
-        : "הושלם.";
-    } else if (s.maaser > 0) {
-      els.maaserStatusNote.textContent = `יתרה למעשר: ${formatCurrency(s.remainingMaaser)}`;
-    } else {
-      els.maaserStatusNote.textContent = "אין חובת מעשר כרגע.";
-    }
-  }
-
-  if (els.chomeshStatusNote) {
-    if (s.isChomeshComplete) {
-      els.chomeshStatusNote.textContent = s.surplusChomesh > 0
-        ? `הושלם. יתרה מעבר לחומש: ${formatCurrency(s.surplusChomesh)}`
-        : "הושלם.";
-    } else if (s.chomesh > 0) {
-      els.chomeshStatusNote.textContent = `יתרה לחומש: ${formatCurrency(s.remainingChomesh)}`;
-    } else {
-      els.chomeshStatusNote.textContent = "אין חובת חומש כרגע.";
-    }
-  }
-}
-
-<<<<<<< HEAD
-function sortEntries(list) {
-  const { column, direction } = sortState;
-  const mul = direction === "asc" ? 1 : -1;
-  return list.slice().sort((a, b) => {
-    let av = a[column];
-    let bv = b[column];
-    if (column === "amount") {
-      av = toNumber(av);
-      bv = toNumber(bv);
-      return (av - bv) * mul;
-    }
-    const as = String(av || "");
-    const bs = String(bv || "");
-    return as.localeCompare(bs, "he") * mul;
-  });
-}
-
-function renderTable() {
-  const filteredAll = sortEntries(getFilteredEntries());
-  const sortedAll = sortEntries(state.entries.slice());
-  const incomes = sortedAll.filter((x) => x.type === "income");
-  const donations = sortedAll.filter((x) => x.type === "donation");
-
-  fillTableBody(els.entriesBodyAll, filteredAll);
-  fillTableBody(els.entriesBodyIncome, incomes);
-  fillTableBody(els.entriesBodyDonation, donations);
-
-  // Update table footers
-  if (els.tableFooterAll) {
-    let incomeSum = 0;
-    let donSum = 0;
-    for (const e of filteredAll) {
-      if (e.type === "income") incomeSum += toNumber(e.amount);
-      else donSum += Math.max(0, toNumber(e.amount));
-    }
-    els.tableFooterAll.textContent = `${filteredAll.length} רשומות | הכנסות: ${formatCurrency(incomeSum)} | תרומות: ${formatCurrency(donSum)}`;
-  }
-  if (els.tableFooterIncome) {
-    const sum = incomes.reduce((s, e) => s + toNumber(e.amount), 0);
-    els.tableFooterIncome.textContent = `${incomes.length} הכנסות | סה"כ: ${formatCurrency(sum)}`;
-  }
-  if (els.tableFooterDonation) {
-    const sum = donations.reduce((s, e) => s + Math.max(0, toNumber(e.amount)), 0);
-    els.tableFooterDonation.textContent = `${donations.length} תרומות | סה"כ: ${formatCurrency(sum)}`;
-  }
-
-  // Update sort indicators on all sortable headers
-  document.querySelectorAll("th.sortable").forEach((th) => {
-    th.classList.remove("sort-asc", "sort-desc");
-    if (th.dataset.sort === sortState.column) {
-      th.classList.add(sortState.direction === "asc" ? "sort-asc" : "sort-desc");
-    }
-  });
-=======
-function renderTable() {
-  const filtered = getFilteredEntries().slice().sort((a, b) => (a.date < b.date ? 1 : -1));
-  const filteredIncome = filtered.filter((x) => x.type === "income");
-  const filteredDonation = filtered.filter((x) => x.type === "donation");
-
-  fillTableBody(els.entriesBodyAll, filtered);
-  fillTableBody(els.entriesBodyIncome, filteredIncome);
-  fillTableBody(els.entriesBodyDonation, filteredDonation);
->>>>>>> origin/main
 
   // Show filtered totals summary
   const isFiltered = (els.search.value || "").trim() !== "" ||
     (els.filterYear && els.filterYear.value) ||
-<<<<<<< HEAD
     (els.filterMonth && els.filterMonth.value) ||
     (els.filterType && els.filterType.value) ||
     (els.filterMinAmount && els.filterMinAmount.value !== "") ||
@@ -777,16 +562,6 @@ function renderTable() {
     els.filterSummaryCount.textContent = `${filteredAll.length} רשומות מסוננות`;
     els.filterSummaryIncome.textContent = `הכנסות: ${formatCurrency(filteredIncome)}`;
     els.filterSummaryDonations.textContent = `תרומות: ${formatCurrency(filteredDonations)}`;
-=======
-    els.fromDate.value || els.toDate.value;
-
-  if (isFiltered && filtered.length > 0) {
-    const filteredIncomeSum = filteredIncome.reduce((s, e) => s + toNumber(e.amount), 0);
-    const filteredDonationsSum = filteredDonation.reduce((s, e) => s + Math.max(0, toNumber(e.amount)), 0);
-    els.filterSummaryCount.textContent = `${filtered.length} רשומות מסוננות`;
-    els.filterSummaryIncome.textContent = `הכנסות: ${formatCurrency(filteredIncomeSum)}`;
-    els.filterSummaryDonations.textContent = `תרומות: ${formatCurrency(filteredDonationsSum)}`;
->>>>>>> origin/main
     els.filterSummary.classList.remove("hidden");
   } else {
     els.filterSummary.classList.add("hidden");
@@ -798,16 +573,12 @@ function fillTableBody(bodyEl, list) {
   for (const item of list) {
     const frag = els.rowTemplate.content.cloneNode(true);
     const row = frag.querySelector("tr");
-<<<<<<< HEAD
     row.classList.add(item.type === "donation" ? "row-donation" : "row-income");
     const badge = row.querySelector('[data-k="type"] .type-badge');
     if (badge) {
       badge.textContent = rowTypeLabel(item.type);
       badge.className = `type-badge badge-${item.type}`;
     }
-=======
-    row.querySelector('[data-k="type"]').textContent = rowTypeLabel(item.type);
->>>>>>> origin/main
     row.querySelector('[data-k="date"]').textContent = item.date;
     row.querySelector('[data-k="hebrewDate"]').textContent = toHebrewDate(item.date) || item.hebrewDate || "-";
     row.querySelector('[data-k="description"]').textContent = item.description || "";
@@ -1549,7 +1320,6 @@ function rerender() {
   renderReportChart();
 }
 
-<<<<<<< HEAD
 function applyDarkMode(dark) {
   document.body.classList.toggle("dark", dark);
   if (els.darkModeBtn) els.darkModeBtn.textContent = dark ? "☀️" : "🌙";
@@ -1572,25 +1342,6 @@ function clearAllFilters() {
   renderTable();
 }
 
-=======
->>>>>>> origin/main
-function bindEvents() {
-  els.form.addEventListener("submit", onSubmit);
-  els.type.addEventListener("change", toggleRecipient);
-  els.cancelEditBtn.addEventListener("click", resetFormToCreateMode);
-  els.entriesBodyAll.addEventListener("click", onRowActions);
-  els.entriesBodyIncome.addEventListener("click", onRowActions);
-  els.entriesBodyDonation.addEventListener("click", onRowActions);
-
-<<<<<<< HEAD
-  const filterEls = [
-    els.search, els.filterYear, els.filterMonth, els.filterType,
-    els.filterMinAmount, els.filterMaxAmount, els.fromDate, els.toDate
-  ];
-  filterEls.forEach((el) => {
-=======
-  [els.search, els.filterYear, els.fromDate, els.toDate].forEach((el) => {
->>>>>>> origin/main
     if (!el) return;
     el.addEventListener("input", renderTable);
     el.addEventListener("change", renderTable);
@@ -1761,7 +1512,6 @@ function bindEvents() {
 
   els.importExcelBtn.addEventListener("click", onImportExcel);
   els.quickImportBtn.addEventListener("click", onQuickImport);
-<<<<<<< HEAD
 
   // Dark mode toggle
   if (els.darkModeBtn) {
@@ -1842,11 +1592,6 @@ function init() {
     applyDarkMode(true);
   }
 
-=======
-}
-
-function init() {
->>>>>>> origin/main
   loadState();
   state.entries = state.entries.map((e) => ({
     ...e,

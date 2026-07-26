@@ -1,7 +1,5 @@
 # מחשבון מעשרות וחומש
 
-<<<<<<< HEAD
-=======
 ## ⬇️ הורדה ישירה לווינדוס
 
 **[לחץ כאן להורדת MaaserChomesh.exe](https://github.com/g1435r-svg/CADSH/releases/latest/download/MaaserChomesh.exe)**
@@ -10,7 +8,6 @@
 
 ---
 
->>>>>>> origin/main
 מערכת לניהול הכנסות ותרומות עם חישוב:
 
 - מעשר (10%)
