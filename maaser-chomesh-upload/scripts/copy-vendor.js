@@ -7,7 +7,7 @@ const vendorDir = path.join(root, "vendor");
 fs.mkdirSync(vendorDir, { recursive: true });
 
 const files = [
-  ["node_modules/chart.js/dist/chart.umd.min.js", "vendor/chart.umd.min.js"],
+  ["node_modules/chart.js/dist/chart.umd.js", "vendor/chart.umd.min.js"],
   ["node_modules/xlsx/dist/xlsx.full.min.js", "vendor/xlsx.full.min.js"],
 ];
 
