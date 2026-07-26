@@ -1,6 +1,7 @@
 const STORAGE_KEY = "maaser-chomesh-data-v2";
 const PROFILES_KEY = "maaser-chomesh-import-profiles-v1";
 const PROFILE_SETTINGS_KEY = "maaser-chomesh-import-profile-settings-v1";
+const AUTO_BACKUP_SETTINGS_KEY = "maaser-chomesh-auto-backup-v1";
 
 /** @type {{ entries: Array<any>, version: string, date: string }} */
 let state = {
@@ -20,6 +21,10 @@ const MAX_HISTORY = 100;
 let undoStack = [];
 let redoStack = [];
 let manualSelectedRows = new Set();
+
+let autoBackupEnabled = false;
+let autoBackupIntervalMinutes = 10;
+let autoBackupTimer = null;
 
 const els = {
   form: document.getElementById("entry-form"),
@@ -107,7 +112,9 @@ const els = {
   excelParsedPreview: document.getElementById("excel-parsed-preview"),
   excelLegacyPreview: document.getElementById("excel-legacy-preview"),
   importExcelBtn: document.getElementById("import-excel-btn"),
-  quickImportBtn: document.getElementById("quick-import-btn")
+  quickImportBtn: document.getElementById("quick-import-btn"),
+  autoBackupToggle: document.getElementById("auto-backup-toggle"),
+  autoBackupIntervalSel: document.getElementById("auto-backup-interval")
 };
 
 /** @type {Record<string, any>} */
@@ -1569,6 +1576,102 @@ function bindEvents() {
 
   els.importExcelBtn.addEventListener("click", onImportExcel);
   els.quickImportBtn.addEventListener("click", onQuickImport);
+
+  if (els.autoBackupToggle) {
+    els.autoBackupToggle.addEventListener("change", onAutoBackupToggleChange);
+  }
+  if (els.autoBackupIntervalSel) {
+    els.autoBackupIntervalSel.addEventListener("change", onAutoBackupIntervalChange);
+  }
+}
+
+function loadAutoBackupSettings() {
+  try {
+    const raw = localStorage.getItem(AUTO_BACKUP_SETTINGS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      autoBackupEnabled = parsed.enabled === true;
+      autoBackupIntervalMinutes = Number(parsed.intervalMinutes) || 10;
+    }
+  } catch (_) {
+    autoBackupEnabled = false;
+    autoBackupIntervalMinutes = 10;
+  }
+}
+
+function saveAutoBackupSettings() {
+  localStorage.setItem(AUTO_BACKUP_SETTINGS_KEY, JSON.stringify({
+    enabled: autoBackupEnabled,
+    intervalMinutes: autoBackupIntervalMinutes
+  }));
+}
+
+async function runAutoBackup() {
+  if (!state.entries.length) return;
+  const data = JSON.stringify(state, null, 2);
+
+  // In Electron context: silently save to userData/auto-backups folder
+  if (typeof window !== "undefined" && window.electronAPI && window.electronAPI.isElectron) {
+    const result = await window.electronAPI.saveAutoBackup(data);
+    if (result && result.ok) {
+      showNotice("גיבוי אוטומטי נשמר בהצלחה", "success", 3000);
+    } else {
+      showNotice("גיבוי אוטומטי נכשל", "error", 3000);
+    }
+  } else {
+    // Browser fallback: trigger download
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    a.download = `auto_backup_${stamp}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showNotice("גיבוי אוטומטי הורד", "success", 3000);
+  }
+}
+
+function startAutoBackupTimer() {
+  stopAutoBackupTimer();
+  if (!autoBackupEnabled) return;
+  autoBackupTimer = setInterval(runAutoBackup, autoBackupIntervalMinutes * 60 * 1000);
+}
+
+function stopAutoBackupTimer() {
+  if (autoBackupTimer !== null) {
+    clearInterval(autoBackupTimer);
+    autoBackupTimer = null;
+  }
+}
+
+function applyAutoBackupUi() {
+  if (els.autoBackupToggle) els.autoBackupToggle.checked = autoBackupEnabled;
+  if (els.autoBackupIntervalSel) {
+    els.autoBackupIntervalSel.value = String(autoBackupIntervalMinutes);
+    els.autoBackupIntervalSel.disabled = !autoBackupEnabled;
+  }
+}
+
+function onAutoBackupToggleChange() {
+  autoBackupEnabled = els.autoBackupToggle.checked;
+  saveAutoBackupSettings();
+  applyAutoBackupUi();
+  startAutoBackupTimer();
+  if (autoBackupEnabled) {
+    showNotice(`גיבוי אוטומטי הופעל (כל ${autoBackupIntervalMinutes} דקות)`, "success", 3000);
+  } else {
+    showNotice("גיבוי אוטומטי כובה", "success", 2500);
+  }
+}
+
+function onAutoBackupIntervalChange() {
+  autoBackupIntervalMinutes = Number(els.autoBackupIntervalSel.value) || 10;
+  saveAutoBackupSettings();
+  startAutoBackupTimer();
+  if (autoBackupEnabled) {
+    showNotice(`גיבוי אוטומטי: כל ${autoBackupIntervalMinutes} דקות`, "success", 2500);
+  }
 }
 
 function init() {
@@ -1579,6 +1682,7 @@ function init() {
   }));
   loadProfiles();
   loadProfileSettings();
+  loadAutoBackupSettings();
   bindEvents();
   renderProfileOptions();
   updateDefaultProfileUiHint();
@@ -1589,6 +1693,8 @@ function init() {
   rerender();
   updateSelectedRowsCounter();
   updateUndoRedoButtons();
+  applyAutoBackupUi();
+  startAutoBackupTimer();
 }
 
 init();

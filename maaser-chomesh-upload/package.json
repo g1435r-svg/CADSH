@@ -18,7 +18,8 @@
       "index.html",
       "styles.css",
       "app.js",
-      "electron-main.js"
+      "electron-main.js",
+      "preload.js"
     ],
     "win": {
       "target": [
