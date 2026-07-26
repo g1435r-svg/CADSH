@@ -1,5 +1,6 @@
 name: Build Windows EXE
 # Builds a portable offline EXE for Windows (chart.js + xlsx bundled locally)
+# Updated: 2026-07-26
 
 on:
   push:
