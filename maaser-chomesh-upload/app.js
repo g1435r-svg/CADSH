@@ -20,6 +20,8 @@ const MAX_HISTORY = 100;
 let undoStack = [];
 let redoStack = [];
 let manualSelectedRows = new Set();
+let sortState = { column: "date", direction: "desc" };
+const DARK_MODE_KEY = "maaser-dark-mode";
 
 const els = {
   form: document.getElementById("entry-form"),
@@ -55,6 +57,11 @@ const els = {
   chomeshStatusNote: document.getElementById("chomesh-status-note"),
   search: document.getElementById("search"),
   filterYear: document.getElementById("filter-year"),
+  filterMonth: document.getElementById("filter-month"),
+  filterType: document.getElementById("filter-type"),
+  filterMinAmount: document.getElementById("filter-min-amount"),
+  filterMaxAmount: document.getElementById("filter-max-amount"),
+  clearFiltersBtn: document.getElementById("clear-filters-btn"),
   fromDate: document.getElementById("from-date"),
   toDate: document.getElementById("to-date"),
   filterSummary: document.getElementById("filter-summary"),
@@ -70,6 +77,7 @@ const els = {
   importSteps: Array.from(document.querySelectorAll("#import-steps .import-step")),
   undoBtn: document.getElementById("undo-btn"),
   redoBtn: document.getElementById("redo-btn"),
+  darkModeBtn: document.getElementById("dark-mode-btn"),
   exportBtn: document.getElementById("export-btn"),
   exportCsvBtn: document.getElementById("export-csv-btn"),
   exportXlsxBtn: document.getElementById("export-xlsx-btn"),
@@ -111,7 +119,12 @@ const els = {
   excelParsedPreview: document.getElementById("excel-parsed-preview"),
   excelLegacyPreview: document.getElementById("excel-legacy-preview"),
   importExcelBtn: document.getElementById("import-excel-btn"),
-  quickImportBtn: document.getElementById("quick-import-btn")
+  quickImportBtn: document.getElementById("quick-import-btn"),
+  tableFooterAll: document.getElementById("table-footer-all"),
+  tableFooterIncome: document.getElementById("table-footer-income"),
+  tableFooterDonation: document.getElementById("table-footer-donation"),
+  maaserProgressBar: document.getElementById("maaser-progress-bar"),
+  chomeshProgressBar: document.getElementById("chomesh-progress-bar")
 };
 
 /** @type {Record<string, any>} */
@@ -560,14 +573,23 @@ function rowTypeLabel(type) {
 function getFilteredEntries() {
   const q = (els.search.value || "").trim().toLowerCase();
   const filterYear = (els.filterYear && els.filterYear.value) || "";
+  const filterMonth = (els.filterMonth && els.filterMonth.value) || "";
+  const filterType = (els.filterType && els.filterType.value) || "";
   const from = els.fromDate.value;
   const to = els.toDate.value;
+  const minAmt = els.filterMinAmount && els.filterMinAmount.value !== "" ? Number(els.filterMinAmount.value) : null;
+  const maxAmt = els.filterMaxAmount && els.filterMaxAmount.value !== "" ? Number(els.filterMaxAmount.value) : null;
 
   return state.entries.filter((entry) => {
     if (activeTab !== "all" && entry.type !== activeTab) return false;
+    if (filterType && entry.type !== filterType) return false;
     if (filterYear && !String(entry.date || "").startsWith(`${filterYear}-`)) return false;
+    if (filterMonth && !String(entry.date || "").slice(5, 7).startsWith(filterMonth)) return false;
     if (from && entry.date < from) return false;
     if (to && entry.date > to) return false;
+    const entryAmt = Math.abs(toNumber(entry.amount));
+    if (minAmt !== null && entryAmt < minAmt) return false;
+    if (maxAmt !== null && entryAmt > maxAmt) return false;
 
     if (!q) return true;
     const haystack = [entry.description, entry.notes, entry.recipient].filter(Boolean).join(" ").toLowerCase();
@@ -601,6 +623,15 @@ function renderSummary() {
   els.totalDonations.textContent = formatCurrency(s.donations);
   els.remainingMaaser.textContent = formatCurrency(s.remainingMaaser);
   els.remainingChomesh.textContent = formatCurrency(s.remainingChomesh);
+
+  if (els.maaserProgressBar) {
+    const pct = s.maaser > 0 ? Math.min(100, (s.donations / s.maaser) * 100) : 0;
+    els.maaserProgressBar.style.width = `${pct.toFixed(1)}%`;
+  }
+  if (els.chomeshProgressBar) {
+    const pct = s.chomesh > 0 ? Math.min(100, (s.donations / s.chomesh) * 100) : 0;
+    els.chomeshProgressBar.style.width = `${pct.toFixed(1)}%`;
+  }
 
   if (els.maaserStatusCard) {
     els.maaserStatusCard.classList.toggle("goal-complete", s.isMaaserComplete);
@@ -636,9 +667,26 @@ function renderSummary() {
   }
 }
 
+function sortEntries(list) {
+  const { column, direction } = sortState;
+  const mul = direction === "asc" ? 1 : -1;
+  return list.slice().sort((a, b) => {
+    let av = a[column];
+    let bv = b[column];
+    if (column === "amount") {
+      av = toNumber(av);
+      bv = toNumber(bv);
+      return (av - bv) * mul;
+    }
+    const as = String(av || "");
+    const bs = String(bv || "");
+    return as.localeCompare(bs, "he") * mul;
+  });
+}
+
 function renderTable() {
-  const sortedAll = state.entries.slice().sort((a, b) => (a.date < b.date ? 1 : -1));
-  const filteredAll = getFilteredEntries().slice().sort((a, b) => (a.date < b.date ? 1 : -1));
+  const filteredAll = sortEntries(getFilteredEntries());
+  const sortedAll = sortEntries(state.entries.slice());
   const incomes = sortedAll.filter((x) => x.type === "income");
   const donations = sortedAll.filter((x) => x.type === "donation");
 
@@ -646,9 +694,36 @@ function renderTable() {
   fillTableBody(els.entriesBodyIncome, incomes);
   fillTableBody(els.entriesBodyDonation, donations);
 
+  // Update table footers
+  if (els.tableFooterAll) {
+    const incomeSum = filteredAll.filter((x) => x.type === "income").reduce((s, e) => s + toNumber(e.amount), 0);
+    const donSum = filteredAll.filter((x) => x.type === "donation").reduce((s, e) => s + Math.max(0, toNumber(e.amount)), 0);
+    els.tableFooterAll.textContent = `${filteredAll.length} רשומות | הכנסות: ${formatCurrency(incomeSum)} | תרומות: ${formatCurrency(donSum)}`;
+  }
+  if (els.tableFooterIncome) {
+    const sum = incomes.reduce((s, e) => s + toNumber(e.amount), 0);
+    els.tableFooterIncome.textContent = `${incomes.length} הכנסות | סה"כ: ${formatCurrency(sum)}`;
+  }
+  if (els.tableFooterDonation) {
+    const sum = donations.reduce((s, e) => s + Math.max(0, toNumber(e.amount)), 0);
+    els.tableFooterDonation.textContent = `${donations.length} תרומות | סה"כ: ${formatCurrency(sum)}`;
+  }
+
+  // Update sort indicators on all sortable headers
+  document.querySelectorAll("th.sortable").forEach((th) => {
+    th.classList.remove("sort-asc", "sort-desc");
+    if (th.dataset.sort === sortState.column) {
+      th.classList.add(sortState.direction === "asc" ? "sort-asc" : "sort-desc");
+    }
+  });
+
   // Show filtered totals summary
   const isFiltered = (els.search.value || "").trim() !== "" ||
     (els.filterYear && els.filterYear.value) ||
+    (els.filterMonth && els.filterMonth.value) ||
+    (els.filterType && els.filterType.value) ||
+    (els.filterMinAmount && els.filterMinAmount.value !== "") ||
+    (els.filterMaxAmount && els.filterMaxAmount.value !== "") ||
     els.fromDate.value || els.toDate.value;
 
   if (isFiltered && filteredAll.length > 0) {
@@ -668,7 +743,12 @@ function fillTableBody(bodyEl, list) {
   for (const item of list) {
     const frag = els.rowTemplate.content.cloneNode(true);
     const row = frag.querySelector("tr");
-    row.querySelector('[data-k="type"]').textContent = rowTypeLabel(item.type);
+    row.classList.add(item.type === "donation" ? "row-donation" : "row-income");
+    const badge = row.querySelector('[data-k="type"] .type-badge');
+    if (badge) {
+      badge.textContent = rowTypeLabel(item.type);
+      badge.className = `type-badge badge-${item.type}`;
+    }
     row.querySelector('[data-k="date"]').textContent = item.date;
     row.querySelector('[data-k="hebrewDate"]').textContent = toHebrewDate(item.date) || item.hebrewDate || "-";
     row.querySelector('[data-k="description"]').textContent = item.description || "";
@@ -1410,6 +1490,28 @@ function rerender() {
   renderReportChart();
 }
 
+function applyDarkMode(dark) {
+  document.body.classList.toggle("dark", dark);
+  if (els.darkModeBtn) els.darkModeBtn.textContent = dark ? "☀️" : "🌙";
+  localStorage.setItem(DARK_MODE_KEY, dark ? "1" : "0");
+}
+
+function toggleDarkMode() {
+  applyDarkMode(!document.body.classList.contains("dark"));
+}
+
+function clearAllFilters() {
+  if (els.search) els.search.value = "";
+  if (els.filterYear) els.filterYear.value = "";
+  if (els.filterMonth) els.filterMonth.value = "";
+  if (els.filterType) els.filterType.value = "";
+  if (els.fromDate) els.fromDate.value = "";
+  if (els.toDate) els.toDate.value = "";
+  if (els.filterMinAmount) els.filterMinAmount.value = "";
+  if (els.filterMaxAmount) els.filterMaxAmount.value = "";
+  renderTable();
+}
+
 function bindEvents() {
   els.form.addEventListener("submit", onSubmit);
   els.type.addEventListener("change", toggleRecipient);
@@ -1418,7 +1520,7 @@ function bindEvents() {
   els.entriesBodyIncome.addEventListener("click", onRowActions);
   els.entriesBodyDonation.addEventListener("click", onRowActions);
 
-  [els.search, els.filterYear, els.fromDate, els.toDate].forEach((el) => {
+  [els.search, els.filterYear, els.filterMonth, els.filterType, els.filterMinAmount, els.filterMaxAmount, els.fromDate, els.toDate].forEach((el) => {
     if (!el) return;
     el.addEventListener("input", renderTable);
     el.addEventListener("change", renderTable);
@@ -1589,9 +1691,63 @@ function bindEvents() {
 
   els.importExcelBtn.addEventListener("click", onImportExcel);
   els.quickImportBtn.addEventListener("click", onQuickImport);
+
+  // Dark mode toggle
+  if (els.darkModeBtn) {
+    els.darkModeBtn.addEventListener("click", toggleDarkMode);
+  }
+
+  // Clear all filters
+  if (els.clearFiltersBtn) {
+    els.clearFiltersBtn.addEventListener("click", clearAllFilters);
+  }
+
+  // Column sort on table headers
+  document.querySelectorAll("th.sortable").forEach((th) => {
+    th.addEventListener("click", () => {
+      const col = th.dataset.sort;
+      if (!col) return;
+      if (sortState.column === col) {
+        sortState.direction = sortState.direction === "asc" ? "desc" : "asc";
+      } else {
+        sortState.column = col;
+        sortState.direction = col === "date" ? "desc" : "asc";
+      }
+      renderTable();
+    });
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener("keydown", (e) => {
+    const tag = (document.activeElement && document.activeElement.tagName) || "";
+    const isInput = ["INPUT", "TEXTAREA", "SELECT"].includes(tag);
+
+    if (e.key === "Escape" && els.editingId.value) {
+      resetFormToCreateMode();
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && !isInput) {
+      if (e.key === "z") {
+        e.preventDefault();
+        undoLastAction();
+      } else if (e.key === "y") {
+        e.preventDefault();
+        redoLastAction();
+      }
+    }
+  });
 }
 
 function init() {
+  // Load dark mode preference
+  const savedDark = localStorage.getItem(DARK_MODE_KEY);
+  if (savedDark === "1") {
+    applyDarkMode(true);
+  } else if (savedDark === null && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+    applyDarkMode(true);
+  }
+
   loadState();
   state.entries = state.entries.map((e) => ({
     ...e,

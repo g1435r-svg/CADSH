@@ -18,6 +18,7 @@
         <p>הכנסות, תרומות, יתרה להפרשה, ודוחות חכמים</p>
       </div>
       <div class="actions-inline">
+        <button id="dark-mode-btn" class="btn icon-btn" type="button" title="מצב כהה/בהיר" aria-label="מצב כהה/בהיר">🌙</button>
         <button id="undo-btn" class="btn" type="button">בטל פעולה</button>
         <button id="redo-btn" class="btn" type="button">שחזר פעולה</button>
         <button id="export-btn" class="btn">גיבוי JSON</button>
@@ -42,8 +43,8 @@
         <h2>תמונה כללית</h2>
         <div class="stats-grid">
           <article><h3>סה"כ הכנסות</h3><p id="total-income">₪0.00</p></article>
-          <article id="maaser-status-card" class="goal-card"><h3>חובת מעשר (10%)</h3><p id="maaser-target">₪0.00</p><small id="maaser-status-note" class="goal-note">יתרה למעשר: ₪0.00</small></article>
-          <article id="chomesh-status-card" class="goal-card"><h3>חובת חומש (20%)</h3><p id="chomesh-target">₪0.00</p><small id="chomesh-status-note" class="goal-note">יתרה לחומש: ₪0.00</small></article>
+          <article id="maaser-status-card" class="goal-card"><h3>חובת מעשר (10%)</h3><p id="maaser-target">₪0.00</p><div class="goal-progress-wrap"><div class="goal-progress-bar" id="maaser-progress-bar"></div></div><small id="maaser-status-note" class="goal-note">יתרה למעשר: ₪0.00</small></article>
+          <article id="chomesh-status-card" class="goal-card"><h3>חובת חומש (20%)</h3><p id="chomesh-target">₪0.00</p><div class="goal-progress-wrap"><div class="goal-progress-bar" id="chomesh-progress-bar"></div></div><small id="chomesh-status-note" class="goal-note">יתרה לחומש: ₪0.00</small></article>
           <article><h3>סה"כ תרומות</h3><p id="total-donations">₪0.00</p></article>
           <article><h3>נותר למעשר</h3><p id="remaining-maaser">₪0.00</p></article>
           <article><h3>נותר לחומש</h3><p id="remaining-chomesh">₪0.00</p></article>
@@ -136,6 +137,32 @@
               </select>
             </label>
             <label>
+              חודש
+              <select id="filter-month">
+                <option value="">כל החודשים</option>
+                <option value="01">ינואר</option>
+                <option value="02">פברואר</option>
+                <option value="03">מרץ</option>
+                <option value="04">אפריל</option>
+                <option value="05">מאי</option>
+                <option value="06">יוני</option>
+                <option value="07">יולי</option>
+                <option value="08">אוגוסט</option>
+                <option value="09">ספטמבר</option>
+                <option value="10">אוקטובר</option>
+                <option value="11">נובמבר</option>
+                <option value="12">דצמבר</option>
+              </select>
+            </label>
+            <label>
+              סוג
+              <select id="filter-type">
+                <option value="">הכל</option>
+                <option value="income">הכנסות</option>
+                <option value="donation">תרומות</option>
+              </select>
+            </label>
+            <label>
               מתאריך
               <input id="from-date" type="date" />
             </label>
@@ -143,6 +170,17 @@
               עד תאריך
               <input id="to-date" type="date" />
             </label>
+            <label>
+              סכום מינימום
+              <input id="filter-min-amount" type="number" step="0.01" placeholder="ללא מגבלה" />
+            </label>
+            <label>
+              סכום מקסימום
+              <input id="filter-max-amount" type="number" step="0.01" placeholder="ללא מגבלה" />
+            </label>
+            <div class="filter-clear-wrap">
+              <button id="clear-filters-btn" class="btn" type="button">נקה פילטרים</button>
+            </div>
           </div>
 
           <div id="filter-summary" class="filter-summary hidden">
@@ -155,17 +193,18 @@
             <table>
               <thead>
                 <tr>
-                  <th>סוג</th>
-                  <th>תאריך</th>
+                  <th data-sort="type" class="sortable">סוג <span class="sort-icon">↕</span></th>
+                  <th data-sort="date" class="sortable">תאריך <span class="sort-icon">↕</span></th>
                   <th>תאריך עברי</th>
-                  <th>תיאור</th>
-                  <th>סכום</th>
+                  <th data-sort="description" class="sortable">תיאור <span class="sort-icon">↕</span></th>
+                  <th data-sort="amount" class="sortable">סכום <span class="sort-icon">↕</span></th>
                   <th>מקבל</th>
                   <th>הערות</th>
                   <th>פעולות</th>
                 </tr>
               </thead>
               <tbody id="entries-body-all"></tbody>
+              <tfoot><tr><td colspan="8" id="table-footer-all" class="table-footer"></td></tr></tfoot>
             </table>
           </div>
         </div>
@@ -176,17 +215,18 @@
             <table>
               <thead>
                 <tr>
-                  <th>סוג</th>
-                  <th>תאריך</th>
+                  <th data-sort="type" class="sortable">סוג <span class="sort-icon">↕</span></th>
+                  <th data-sort="date" class="sortable">תאריך <span class="sort-icon">↕</span></th>
                   <th>תאריך עברי</th>
-                  <th>תיאור</th>
-                  <th>סכום</th>
+                  <th data-sort="description" class="sortable">תיאור <span class="sort-icon">↕</span></th>
+                  <th data-sort="amount" class="sortable">סכום <span class="sort-icon">↕</span></th>
                   <th>מקבל</th>
                   <th>הערות</th>
                   <th>פעולות</th>
                 </tr>
               </thead>
               <tbody id="entries-body-income"></tbody>
+              <tfoot><tr><td colspan="8" id="table-footer-income" class="table-footer"></td></tr></tfoot>
             </table>
           </div>
         </div>
@@ -197,17 +237,18 @@
             <table>
               <thead>
                 <tr>
-                  <th>סוג</th>
-                  <th>תאריך</th>
+                  <th data-sort="type" class="sortable">סוג <span class="sort-icon">↕</span></th>
+                  <th data-sort="date" class="sortable">תאריך <span class="sort-icon">↕</span></th>
                   <th>תאריך עברי</th>
-                  <th>תיאור</th>
-                  <th>סכום</th>
+                  <th data-sort="description" class="sortable">תיאור <span class="sort-icon">↕</span></th>
+                  <th data-sort="amount" class="sortable">סכום <span class="sort-icon">↕</span></th>
                   <th>מקבל</th>
                   <th>הערות</th>
                   <th>פעולות</th>
                 </tr>
               </thead>
               <tbody id="entries-body-donation"></tbody>
+              <tfoot><tr><td colspan="8" id="table-footer-donation" class="table-footer"></td></tr></tfoot>
             </table>
           </div>
         </div>
@@ -325,7 +366,7 @@
 
     <template id="row-template">
       <tr>
-        <td data-k="type"></td>
+        <td data-k="type"><span class="type-badge"></span></td>
         <td data-k="date"></td>
         <td data-k="hebrewDate"></td>
         <td data-k="description"></td>
