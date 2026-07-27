@@ -7,6 +7,10 @@
     "start": "electron .",
     "build:exe": "electron-builder --win --x64"
   },
+  "dependencies": {
+    "chart.js": "^4.4.3",
+    "xlsx": "^0.18.5"
+  },
   "devDependencies": {
     "electron": "^31.2.1",
     "electron-builder": "^24.13.3"
@@ -19,8 +23,8 @@
       "styles.css",
       "app.js",
       "electron-main.js",
-      "vendor/chart.umd.js",
-      "vendor/xlsx.full.min.js"
+      "node_modules/chart.js/dist/chart.umd.js",
+      "node_modules/xlsx/dist/xlsx.full.min.js"
     ],
     "win": {
       "target": [
