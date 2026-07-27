@@ -4,8 +4,9 @@
   "description": "מחשבון מעשרות וחומש עם גיבוי",
   "main": "electron-main.js",
   "scripts": {
-    "start": "electron .",
-    "build:exe": "electron-builder --win --x64"
+    "prepare:vendor": "node scripts/prepare-vendor.js",
+    "start": "npm run prepare:vendor && electron .",
+    "build:exe": "npm run prepare:vendor && electron-builder --win --x64"
   },
   "dependencies": {
     "chart.js": "^4.4.3",
@@ -23,8 +24,8 @@
       "styles.css",
       "app.js",
       "electron-main.js",
-      "node_modules/chart.js/dist/chart.umd.js",
-      "node_modules/xlsx/dist/xlsx.full.min.js"
+      "vendor/chart.umd.js",
+      "vendor/xlsx.full.min.js"
     ],
     "win": {
       "target": [
