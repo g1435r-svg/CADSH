@@ -10,6 +10,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: build-windows-exe-latest
+  cancel-in-progress: true
+
 jobs:
   build-windows-exe:
     runs-on: windows-latest
@@ -53,13 +57,14 @@ jobs:
             exit 1
           fi
           EXE_FILE="${exe_files[0]}"
+          EXE_NAME="$(basename "$EXE_FILE")"
           gh release create latest-build "$EXE_FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "MaaserChomesh - Latest Build" \
             --notes "## הורדה ישירה
 
-לחץ על **MaaserChomesh.exe** למטה להורדה והרצה מיידית על Windows.
+לחץ על **$EXE_NAME** למטה להורדה והרצה מיידית על Windows.
 
 > הקובץ נבנה אוטומטית ב-GitHub Actions." \
             --latest
