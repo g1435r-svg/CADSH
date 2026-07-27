@@ -47,6 +47,10 @@ jobs:
           gh release delete latest-build --yes 2>/dev/null || true
           gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/latest-build" 2>/dev/null || true
           EXE_FILE="$(ls "$GITHUB_WORKSPACE"/maaser-chomesh-upload/dist/*.exe | head -n 1)"
+          if [ -z "$EXE_FILE" ]; then
+            echo "No EXE file found in maaser-chomesh-upload/dist"
+            exit 1
+          fi
           gh release create latest-build "$EXE_FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
