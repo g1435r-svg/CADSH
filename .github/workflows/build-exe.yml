@@ -1,17 +1,20 @@
 name: Build Windows EXE
-# Builds a portable offline EXE for Windows (chart.js + xlsx bundled locally)
-# Updated: 2026-07-26b
+# Builds a portable offline EXE for Windows (Chart.js + XLSX bundled locally)
+# Updated: 2026-07-28
 
 on:
   push:
     branches:
       - main
       - master
-      - copilot/**
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: windows-exe-release
+  cancel-in-progress: true
 
 jobs:
   build-windows-exe:
@@ -28,12 +31,25 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: maaser-chomesh-upload/package-lock.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build portable EXE
         run: npm run build:exe
+
+      - name: Resolve EXE path
+        id: exe
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path dist -Filter *.exe | Select-Object -First 1
+          if (-not $exe) {
+            throw "No EXE file found under dist/."
+          }
+          "exe_path=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "exe_name=$($exe.Name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
@@ -42,16 +58,23 @@ jobs:
           path: maaser-chomesh-upload/dist/*.exe
           if-no-files-found: error
 
-      - name: Create GitHub Release
+      - name: Create or update latest release
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-${{ github.run_number }}
-          name: MaaserChomesh - Build ${{ github.run_number }}
+          tag_name: latest-build
+          target_commitish: ${{ github.sha }}
+          name: MaaserChomesh - Latest Build
           body: |
             ### מחשבון מעשרות וחומש
             קובץ EXE נייד להורדה והפעלה ישירה ב-Windows, ללא התקנה.
 
-            **הורדה:** לחץ על הקובץ `MaaserChomesh*.exe` מטה.
-          files: maaser-chomesh-upload/dist/*.exe
+            **מה חדש בבנייה הזאת:**
+            - בנייה אוטומטית בענן GitHub
+            - קובץ EXE אופליין (ללא CDN)
+            - הורדה ישירה מתוך Releases
+
+            **הורדה:** לחץ על הקובץ `${{ steps.exe.outputs.exe_name }}` מטה.
+          files: ${{ steps.exe.outputs.exe_path }}
+          overwrite_files: true
           make_latest: true
