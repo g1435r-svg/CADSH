@@ -121,7 +121,7 @@ body {
   grid-column: span 12;
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(12, 1fr);
+  grid-template-columns: repeat(12, minmax(0, 1fr));
 }
 
 #excel-sheet {
@@ -134,7 +134,7 @@ body {
   padding: 1.1rem;
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(12, 1fr);
+  grid-template-columns: repeat(12, minmax(0, 1fr));
 }
 
 .card {
@@ -142,6 +142,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 18px;
   padding: 1rem;
+  min-width: 0;
   box-shadow: var(--shadow);
   animation: cardIn 0.45s ease;
 }
