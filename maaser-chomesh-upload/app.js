@@ -20,6 +20,7 @@ const MAX_HISTORY = 100;
 let undoStack = [];
 let redoStack = [];
 let manualSelectedRows = new Set();
+let stickyOffsetFrame = null;
 
 const els = {
   form: document.getElementById("entry-form"),
@@ -61,6 +62,8 @@ const els = {
   filterSummaryCount: document.getElementById("filter-summary-count"),
   filterSummaryIncome: document.getElementById("filter-summary-income"),
   filterSummaryDonations: document.getElementById("filter-summary-donations"),
+  topbar: document.querySelector(".topbar"),
+  topSectionsNav: document.querySelector(".top-sections-nav"),
   tabBtns: Array.from(document.querySelectorAll(".tab-btn")),
   topTabMain: document.getElementById("top-tab-main"),
   topTabImport: document.getElementById("top-tab-import"),
@@ -286,6 +289,7 @@ function showNotice(message, type = "info", timeoutMs = 3200) {
   els.appNotice.classList.remove("hidden", "success", "error");
   if (type === "success") els.appNotice.classList.add("success");
   if (type === "error") els.appNotice.classList.add("error");
+  queueStickyOffsetUpdate();
 
   if (noticeTimer) {
     clearTimeout(noticeTimer);
@@ -294,8 +298,31 @@ function showNotice(message, type = "info", timeoutMs = 3200) {
   if (timeoutMs > 0) {
     noticeTimer = setTimeout(() => {
       els.appNotice.classList.add("hidden");
+      queueStickyOffsetUpdate();
     }, timeoutMs);
   }
+}
+
+function updateStickyOffsets() {
+  const root = document.documentElement;
+  if (!root) return;
+  const topbarHeight = Math.ceil(els.topbar?.getBoundingClientRect().height || 0);
+  const topNavHeight = Math.ceil(els.topSectionsNav?.getBoundingClientRect().height || 0);
+  const noticeVisible = Boolean(els.appNotice && !els.appNotice.classList.contains("hidden"));
+  const noticeHeight = noticeVisible ? Math.ceil(els.appNotice.getBoundingClientRect().height || 0) : 0;
+
+  root.style.setProperty("--topbar-height", `${topbarHeight}px`);
+  root.style.setProperty("--top-nav-height", `${topNavHeight}px`);
+  root.style.setProperty("--notice-height", `${noticeHeight}px`);
+  root.style.setProperty("--top-sticky-offset", `${topbarHeight + topNavHeight + noticeHeight + 12}px`);
+}
+
+function queueStickyOffsetUpdate() {
+  if (stickyOffsetFrame != null) return;
+  stickyOffsetFrame = requestAnimationFrame(() => {
+    stickyOffsetFrame = null;
+    updateStickyOffsets();
+  });
 }
 
 function setImportStep(step) {
@@ -751,6 +778,7 @@ function renderTopPanels() {
   if (activeTopTab === "import" && !excelWorkbook) {
     setImportStep(1);
   }
+  queueStickyOffsetUpdate();
 }
 
 function resetFormToCreateMode() {
@@ -1466,6 +1494,9 @@ function rerender() {
 }
 
 function bindEvents() {
+  window.addEventListener("resize", queueStickyOffsetUpdate);
+  window.addEventListener("orientationchange", queueStickyOffsetUpdate);
+
   els.form.addEventListener("submit", onSubmit);
   els.type.addEventListener("change", toggleRecipient);
   els.cancelEditBtn.addEventListener("click", resetFormToCreateMode);
@@ -1664,6 +1695,7 @@ function init() {
   rerender();
   updateSelectedRowsCounter();
   updateUndoRedoButtons();
+  queueStickyOffsetUpdate();
 }
 
 init();

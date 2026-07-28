@@ -9,7 +9,10 @@
   --green: #188038;
   --red: #d93025;
   --shadow: 0 10px 28px rgba(26, 47, 87, 0.08);
-  --top-sticky-offset: 124px;
+  --topbar-height: 74px;
+  --top-nav-height: 48px;
+  --notice-height: 0px;
+  --top-sticky-offset: 132px;
 }
 
 * {
@@ -34,11 +37,17 @@ body {
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--line);
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
   padding: 1rem 1.2rem;
   box-shadow: 0 6px 18px rgba(26, 47, 87, 0.06);
+}
+
+.brand {
+  flex: 1 1 280px;
+  min-width: 220px;
 }
 
 .brand h1 {
@@ -56,6 +65,9 @@ body {
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
+  justify-content: flex-end;
+  flex: 1 1 430px;
+  min-width: 0;
 }
 
 .file-label {
@@ -67,7 +79,7 @@ body {
 
 .top-sections-nav {
   position: sticky;
-  top: 74px;
+  top: var(--topbar-height);
   z-index: 18;
   display: flex;
   gap: 0.5rem;
@@ -78,7 +90,7 @@ body {
 
 .app-notice {
   position: sticky;
-  top: 122px;
+  top: calc(var(--topbar-height) + var(--top-nav-height));
   z-index: 17;
   margin: 0.4rem 1.2rem 0;
   padding: 0.55rem 0.75rem;
@@ -367,6 +379,10 @@ select:focus {
   background: #fff;
 }
 
+.table-wrap {
+  max-height: min(55vh, 520px);
+}
+
 .table-wrap tbody tr:hover {
   background: #f7faff;
 }
@@ -394,6 +410,7 @@ th {
 .inline-actions {
   display: flex;
   gap: 0.4rem;
+  flex-wrap: wrap;
 }
 
 .selected-rows-counter {
@@ -552,7 +569,7 @@ th {
     flex-direction: column;
   }
 
-  :root {
-    --top-sticky-offset: 168px;
+  .actions-inline {
+    justify-content: flex-start;
   }
 }
