@@ -180,11 +180,7 @@ function sanitizeProfilesMap(source) {
 function toIsoDate(value) {
   if (!value) return "";
   if (typeof value === "number") {
-    const parsed = XLSX.SSF.parse_date_code(value);
-    if (!parsed) return "";
-    const month = String(parsed.m).padStart(2, "0");
-    const day = String(parsed.d).padStart(2, "0");
-    return `${parsed.y}-${month}-${day}`;
+    return excelSerialToIsoDate(value);
   }
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   if (typeof value === "string") {
@@ -203,6 +199,13 @@ function toIsoDate(value) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "";
   return d.toISOString().slice(0, 10);
+}
+
+function excelSerialToIsoDate(value) {
+  if (!Number.isFinite(value)) return "";
+  const date = new Date(Math.round((value - 25569) * 86400 * 1000));
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
 }
 
 function toHebrewLetters(num) {
@@ -921,7 +924,7 @@ function exportCsv() {
   URL.revokeObjectURL(url);
 }
 
-function exportXlsx() {
+async function exportXlsx() {
   const rows = state.entries.map((e) => ({
     type: e.type,
     date: e.date,
@@ -932,10 +935,29 @@ function exportXlsx() {
     notes: e.notes || ""
   }));
 
-  const ws = XLSX.utils.json_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "entries");
-  XLSX.writeFile(wb, `entries_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("entries");
+  ws.columns = [
+    { header: "type", key: "type" },
+    { header: "date", key: "date" },
+    { header: "hebrewDate", key: "hebrewDate" },
+    { header: "description", key: "description" },
+    { header: "amount", key: "amount" },
+    { header: "recipient", key: "recipient" },
+    { header: "notes", key: "notes" }
+  ];
+  ws.addRows(rows);
+
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `entries_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function normalizeBackup(raw) {
@@ -1260,20 +1282,112 @@ function updateMappingOptionsFromSelectedRow() {
 
 async function onExcelFileChosen(file) {
   excelFileName = file.name || "";
-  const buf = await file.arrayBuffer();
-  excelWorkbook = XLSX.read(buf, { type: "array" });
-  els.excelSheet.innerHTML = excelWorkbook.SheetNames.map((name) => `<option value="${name}">${name}</option>`).join("");
+  const lowerName = excelFileName.toLowerCase();
+  if (lowerName.endsWith(".csv")) {
+    const text = await file.text();
+    const csvRows = parseDelimitedRows(text);
+    excelWorkbook = {
+      sheetNames: ["CSV"],
+      getRows(sheetName) {
+        return sheetName === "CSV" ? csvRows : [];
+      }
+    };
+  } else {
+    const buf = await file.arrayBuffer();
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buf);
+    excelWorkbook = {
+      sheetNames: workbook.worksheets.map((ws) => ws.name),
+      getRows(sheetName) {
+        const ws = workbook.getWorksheet(sheetName);
+        if (!ws) return [];
+        return worksheetToRows(ws);
+      }
+    };
+  }
+
+  els.excelSheet.innerHTML = excelWorkbook.sheetNames.map((name) => `<option value="${name}">${name}</option>`).join("");
   setImportStep(2);
   loadSelectedSheetRows();
   applyBestProfileForCurrentFile();
   showNotice(`הקובץ נטען: ${excelFileName}`, "success");
 }
 
+function normalizeWorksheetCell(value) {
+  if (value == null) return "";
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (typeof value !== "object") return value;
+  if (typeof value.result === "number" || typeof value.result === "string") return value.result;
+  if (value.text != null) return value.text;
+  if (Array.isArray(value.richText)) {
+    return value.richText.map((part) => part?.text || "").join("");
+  }
+  if (value.hyperlink) return value.text || value.hyperlink;
+  if (value.formula) return value.formula;
+  return String(value);
+}
+
+function worksheetToRows(ws) {
+  const rows = [];
+  ws.eachRow({ includeEmpty: true }, (row) => {
+    const source = Array.isArray(row.values) ? row.values.slice(1) : [];
+    let end = source.length - 1;
+    while (end >= 0 && (source[end] == null || source[end] === "")) end -= 1;
+    rows.push(source.slice(0, end + 1).map((cell) => normalizeWorksheetCell(cell)));
+  });
+  return rows;
+}
+
+function parseDelimitedRows(text) {
+  const normalized = String(text || "").replace(/\r\n?/g, "\n");
+  const firstLine = normalized.split("\n", 1)[0] || "";
+  const commaCount = (firstLine.match(/,/g) || []).length;
+  const semicolonCount = (firstLine.match(/;/g) || []).length;
+  const tabCount = (firstLine.match(/\t/g) || []).length;
+  const delimiter = tabCount >= commaCount && tabCount >= semicolonCount ? "\t" : semicolonCount > commaCount ? ";" : ",";
+
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < normalized.length; i += 1) {
+    const ch = normalized[i];
+    if (ch === '"') {
+      if (inQuotes && normalized[i + 1] === '"') {
+        cell += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+    if (!inQuotes && ch === delimiter) {
+      row.push(cell);
+      cell = "";
+      continue;
+    }
+    if (!inQuotes && ch === "\n") {
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = "";
+      continue;
+    }
+    cell += ch;
+  }
+
+  row.push(cell);
+  if (row.some((part) => String(part || "").trim() !== "")) {
+    rows.push(row);
+  }
+  return rows;
+}
+
 function loadSelectedSheetRows() {
   if (!excelWorkbook) return;
-  const name = els.excelSheet.value || excelWorkbook.SheetNames[0];
-  const ws = excelWorkbook.Sheets[name];
-  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: "" });
+  const name = els.excelSheet.value || excelWorkbook.sheetNames[0];
+  const rows = excelWorkbook.getRows(name).map((row) => row.map((cell) => (cell == null ? "" : cell)));
   if (!rows.length) throw new Error("empty");
 
   excelRows = rows;
@@ -1537,7 +1651,13 @@ function bindEvents() {
 
   els.exportBtn.addEventListener("click", exportBackup);
   els.exportCsvBtn.addEventListener("click", exportCsv);
-  els.exportXlsxBtn.addEventListener("click", exportXlsx);
+  els.exportXlsxBtn.addEventListener("click", async () => {
+    try {
+      await exportXlsx();
+    } catch (_err) {
+      showNotice("ייצוא XLSX נכשל", "error", 5000);
+    }
+  });
 
   if (els.undoBtn) {
     els.undoBtn.addEventListener("click", undoLastAction);

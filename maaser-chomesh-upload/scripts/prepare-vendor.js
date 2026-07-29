@@ -10,8 +10,8 @@ const assets = [
     to: path.join(vendorDir, "chart.umd.js")
   },
   {
-    from: path.join(rootDir, "node_modules", "xlsx", "dist", "xlsx.full.min.js"),
-    to: path.join(vendorDir, "xlsx.full.min.js")
+    from: path.join(rootDir, "node_modules", "exceljs", "dist", "exceljs.min.js"),
+    to: path.join(vendorDir, "exceljs.min.js")
   }
 ];
 
