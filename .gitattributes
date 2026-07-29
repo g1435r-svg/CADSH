@@ -1,0 +1,4 @@
+maaser-chomesh-upload/vendor/*.min.js -diff
+maaser-chomesh-upload/vendor/*.umd.js -diff
+maaser-chomesh-upload/package-lock.json -diff
+maaser-chomesh-upload/node_modules/** -diff
