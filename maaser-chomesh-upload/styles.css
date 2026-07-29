@@ -24,6 +24,7 @@ body {
   min-height: 100vh;
   font-family: "Heebo", "Segoe UI", sans-serif;
   color: var(--ink);
+  overflow-x: hidden;
   background: radial-gradient(1200px 550px at 15% -10%, #dce9ff 0, transparent 55%),
     radial-gradient(900px 500px at 95% -20%, #e8fff4 0, transparent 50%),
     var(--bg);
@@ -390,7 +391,7 @@ select:focus {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 800px;
+  min-width: 720px;
 }
 
 th,
@@ -552,6 +553,13 @@ th {
 }
 
 @media (max-width: 980px) {
+  .form-card,
+  .reports-card {
+    grid-column: span 12;
+  }
+}
+
+@media (max-width: 1240px) {
   .form-card,
   .reports-card {
     grid-column: span 12;
