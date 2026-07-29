@@ -117,8 +117,18 @@ const els = {
   quickImportBtn: document.getElementById("quick-import-btn")
 };
 
+const RESERVED_PROFILE_KEYS = new Set(["__proto__", "prototype", "constructor"]);
+
+function createProfilesStore() {
+  return Object.create(null);
+}
+
+function isSafeProfileKey(name) {
+  return !RESERVED_PROFILE_KEYS.has(name);
+}
+
 /** @type {Record<string, any>} */
-let importProfiles = {};
+let importProfiles = createProfilesStore();
 let profileSettings = {
   defaultProfile: "",
   autoProfileMode: "on"
@@ -165,11 +175,11 @@ function sanitizeMappingModel(model) {
 }
 
 function sanitizeProfilesMap(source) {
-  if (!isPlainObject(source)) return {};
-  const result = {};
+  if (!isPlainObject(source)) return createProfilesStore();
+  const result = createProfilesStore();
   for (const [rawName, rawModel] of Object.entries(source)) {
     const name = String(rawName || "").trim();
-    if (!name) continue;
+    if (!name || !isSafeProfileKey(name)) continue;
     const model = sanitizeMappingModel(rawModel);
     if (!model) continue;
     result[name] = model;
@@ -371,7 +381,7 @@ function loadProfiles() {
     const parsed = JSON.parse(raw);
     importProfiles = sanitizeProfilesMap(parsed);
   } catch (_err) {
-    importProfiles = {};
+    importProfiles = createProfilesStore();
   }
 }
 
@@ -445,6 +455,10 @@ function saveCurrentProfile() {
   const name = (els.profileName.value || "").trim();
   if (!name) {
     alert("יש להזין שם תבנית");
+    return;
+  }
+  if (!isSafeProfileKey(name)) {
+    alert("שם התבנית אינו חוקי");
     return;
   }
   importProfiles[name] = getCurrentMappingModel();
@@ -532,7 +546,9 @@ async function importProfilesJson(file) {
     throw new Error("לא נמצאו תבניות תקינות בקובץ");
   }
 
-  importProfiles = { ...importProfiles, ...importedProfiles };
+  for (const [name, model] of Object.entries(importedProfiles)) {
+    importProfiles[name] = model;
+  }
   if (isPlainObject(parsed.settings)) {
     profileSettings.autoProfileMode = normalizeAutoProfileMode(parsed.settings.autoProfileMode);
     const defaultProfileName = String(parsed.settings.defaultProfile || "").trim();
