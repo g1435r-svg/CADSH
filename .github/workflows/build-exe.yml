@@ -58,13 +58,10 @@ jobs:
           fi
           EXE_FILE="${exe_files[0]}"
           EXE_NAME="$(basename "$EXE_FILE")"
+          NOTES="$(printf '## הורדה ישירה\n\nלחץ על **%s** למטה להורדה והרצה מיידית על Windows.\n\n> הקובץ נבנה אוטומטית ב-GitHub Actions.' "$EXE_NAME")"
           gh release create latest-build "$EXE_FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "MaaserChomesh - Latest Build" \
-            --notes "## הורדה ישירה
-
-לחץ על **$EXE_NAME** למטה להורדה והרצה מיידית על Windows.
-
-> הקובץ נבנה אוטומטית ב-GitHub Actions." \
+            --notes "$NOTES" \
             --latest
