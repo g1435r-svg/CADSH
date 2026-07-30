@@ -1,7 +1,7 @@
 {
   "name": "maaser-chomesh-app",
   "version": "1.0.0",
-  "description": "מחשבון מעשרות וחומש עם גיבוי",
+  "description": "מערכת יבא יצא לניהול הכנסות והוצאות",
   "main": "electron-main.js",
   "scripts": {
     "prepare:vendor": "node scripts/prepare-vendor.js",
@@ -18,7 +18,7 @@
   },
   "build": {
     "appId": "com.local.maaserchomesh",
-    "productName": "MaaserChomesh",
+    "productName": "מערכת יבא יצא",
     "files": [
       "index.html",
       "styles.css",
@@ -31,7 +31,7 @@
       "target": [
         "portable"
       ],
-      "artifactName": "MaaserChomesh.exe"
+      "artifactName": "מערכת-יבא-יצא.exe"
     }
   }
 }
