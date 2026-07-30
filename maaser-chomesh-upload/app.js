@@ -151,6 +151,15 @@ function toNumber(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function escapeHtml(str) {
+  return String(str == null ? "" : str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function toIsoDate(value) {
   if (!value) return "";
   if (typeof value === "number") {
@@ -1077,7 +1086,7 @@ function updateMappingOptions() {
   const options = ['<option value="">לא נבחר</option>']
     .concat(row.map((c,i)=>{
       const t = String(c==null?"":c).trim();
-      return `<option value="${i}">${t||`(ריק) טור ${i+1}`}</option>`;
+      return `<option value="${i}">${escapeHtml(t||`(ריק) טור ${i+1}`)}</option>`;
     })).join("");
   [els.mapDescription,els.mapAmount,els.mapDate,els.mapNotes,els.mapRecipient].forEach(s=>{
     const prev = s.value;
@@ -1090,7 +1099,7 @@ async function onExcelFileChosen(file) {
   excelFileName = file.name||"";
   const buf = await file.arrayBuffer();
   excelWorkbook = XLSX.read(buf,{type:"array"});
-  els.excelSheet.innerHTML = excelWorkbook.SheetNames.map(n=>`<option value="${n}">${n}</option>`).join("");
+  els.excelSheet.innerHTML = excelWorkbook.SheetNames.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
   setImportStep(2);
   loadSelectedSheetRows();
   applyBestProfileForCurrentFile();
@@ -1174,14 +1183,14 @@ function renderExcelPreview() {
 
   const rowsHtml = filtered.slice(0,100).map(({row,index1})=>{
     const chk   = showChk ? `<td><input class="row-check" type="checkbox" data-row="${index1}" ${manualSelectedRows.has(index1)?"checked":""}/></td>` : "";
-    const tds   = row.map(c=>`<td>${c==null?"":String(c)}</td>`).join("");
+    const tds   = row.map(c=>`<td>${escapeHtml(c==null?"":String(c))}</td>`).join("");
     return `<tr>${chk}<td style="text-align:center;color:var(--muted)">${startRow+1+index1}</td>${tds}</tr>`;
   }).join("");
 
   els.excelRawPreview.innerHTML = `
     <h4>תצוגה גולמית${q?" (מסונן)":""} — עד 100 שורות</h4>
     <div style="overflow-x:auto;"><table>
-      <thead><tr>${hdrChk}<th>#</th>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead>
+      <thead><tr>${hdrChk}<th>#</th>${headers.map(h=>`<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>
       <tbody>${rowsHtml}</tbody>
     </table></div>`;
   els.excelRawPreview.style.display="block";
@@ -1249,21 +1258,21 @@ function renderParsedExcelPreview() {
     setImportStep(4);
     const rowsHtml = imported.slice(0,50).map(e=>`<tr>
       <td>${e.type==="donation"?"🤲 תרומה":"💰 הכנסה"}</td>
-      <td>${e.date}</td>
-      <td>${e.hebrewDate}</td>
-      <td>${e.description}</td>
+      <td>${escapeHtml(e.date)}</td>
+      <td>${escapeHtml(e.hebrewDate)}</td>
+      <td>${escapeHtml(e.description)}</td>
       <td>${formatCurrency(e.amount)}</td>
-      <td>${e.recipient||"-"}</td>
-      <td>${e.notes||"-"}</td>
+      <td>${escapeHtml(e.recipient||"-")}</td>
+      <td>${escapeHtml(e.notes||"-")}</td>
     </tr>`).join("");
     els.excelParsedPreview.innerHTML = `
-      <h4>תצוגה מקדימה — ${imported.length} שורות לייבוא${imported.length>50?" (מוצגות 50 ראשונות)":""}</h4>
+      <h4>תצוגה מקדימה — ${escapeHtml(imported.length)} שורות לייבוא${imported.length>50?" (מוצגות 50 ראשונות)":""}</h4>
       <div style="overflow-x:auto;"><table>
         <thead><tr><th>סוג</th><th>תאריך</th><th>תאריך עברי</th><th>תיאור</th><th>סכום</th><th>מקבל</th><th>הערות</th></tr></thead>
         <tbody>${rowsHtml}</tbody>
       </table></div>`;
   } catch (err) {
-    els.excelParsedPreview.innerHTML = `<p style='color:var(--red);padding:.8rem'>שגיאה: ${err.message}</p>`;
+    els.excelParsedPreview.innerHTML = `<p style='color:var(--red);padding:.8rem'>שגיאה: ${escapeHtml(err.message)}</p>`;
   }
 }
 
