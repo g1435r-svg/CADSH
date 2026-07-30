@@ -62,6 +62,6 @@ jobs:
           gh release create latest-build "$EXE_FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "MaaserChomesh - Latest Build" \
+            --title "מערכת יבא יצא - Latest Build" \
             --notes "$NOTES" \
             --latest
