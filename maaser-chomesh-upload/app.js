@@ -847,6 +847,12 @@ function wireEvents() {
 
   els.resetBtn.addEventListener("click", () => {
     if (!confirm("לאפס את כל הנתונים במערכת?")) return;
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(MAPPING_KEY);
+    historyState.past = [];
+    historyState.future = [];
+    importState.rows = [];
+    importState.columns = [];
     applyEntries([], { trackHistory: true });
     resetForms();
   });

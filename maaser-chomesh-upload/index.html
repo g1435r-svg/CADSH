@@ -8,13 +8,13 @@
   </head>
   <body>
     <main class="app">
-      <header class="card hero">
+      <section class="hero">
         <h1>מערכת יבא יצא</h1>
-        <p>ניהול הכנסות ותרומות עם יעדי מעשר וחומש, ייבוא חכם וגיבוי</p>
-      </header>
+        <p>תבנית חדשה, נקייה ופשוטה לניהול הכנסות ותרומות.</p>
+      </section>
 
-      <section class="card">
-        <h2>סיכום מהיר</h2>
+      <section class="card summary-card">
+        <h2>סיכום</h2>
         <div class="stats">
           <article>
             <h3>סה"כ הכנסות</h3>
@@ -42,27 +42,27 @@
           </article>
         </div>
         <div class="summary-actions">
-          <button id="undo-btn" class="btn" type="button">ביטול פעולה</button>
-          <button id="redo-btn" class="btn" type="button">שחזור פעולה</button>
+          <button id="undo-btn" class="btn" type="button">ביטול</button>
+          <button id="redo-btn" class="btn" type="button">שחזור</button>
           <button id="export-btn" class="btn" type="button">ייצוא JSON</button>
           <label class="btn upload-btn">
             ייבוא JSON
             <input id="import-json-input" type="file" accept="application/json" hidden />
           </label>
-          <button id="reset-btn" class="btn danger" type="button">איפוס המערכת</button>
+          <button id="reset-btn" class="btn danger" type="button">ניקוי מלא</button>
         </div>
       </section>
 
-      <section class="card">
+      <section class="card workspace-card">
         <div class="tabs" role="tablist" aria-label="ניווט">
           <button class="tab-btn active" data-tab="income" type="button">הכנסות</button>
           <button class="tab-btn" data-tab="donation" type="button">תרומות</button>
-          <button class="tab-btn" data-tab="search" type="button">חיפוש וסינון</button>
+          <button class="tab-btn" data-tab="search" type="button">חיפוש</button>
           <button class="tab-btn" data-tab="import" type="button">ייבוא מאקסל</button>
         </div>
 
         <section class="tab-panel active" data-panel="income">
-          <h2>כרטיסיית הכנסות</h2>
+          <h2>הכנסות</h2>
           <form id="income-form" class="form-grid">
             <input type="hidden" id="income-editing-id" />
             <label>
@@ -82,8 +82,8 @@
               <input type="text" id="income-notes" placeholder="אופציונלי" />
             </label>
             <div class="form-actions">
-              <button type="submit" class="btn primary" id="income-save-btn">שמור הכנסה</button>
-              <button type="button" class="btn" id="income-cancel-btn">ביטול עריכה</button>
+              <button type="submit" class="btn primary" id="income-save-btn">שמור</button>
+              <button type="button" class="btn" id="income-cancel-btn">ביטול</button>
             </div>
           </form>
           <div class="table-wrap">
@@ -103,7 +103,7 @@
         </section>
 
         <section class="tab-panel" data-panel="donation">
-          <h2>כרטיסיית תרומות</h2>
+          <h2>תרומות</h2>
           <form id="donation-form" class="form-grid">
             <input type="hidden" id="donation-editing-id" />
             <label>
@@ -123,8 +123,8 @@
               <input type="text" id="donation-notes" placeholder="אופציונלי" />
             </label>
             <div class="form-actions">
-              <button type="submit" class="btn primary" id="donation-save-btn">שמור תרומה</button>
-              <button type="button" class="btn" id="donation-cancel-btn">ביטול עריכה</button>
+              <button type="submit" class="btn primary" id="donation-save-btn">שמור</button>
+              <button type="button" class="btn" id="donation-cancel-btn">ביטול</button>
             </div>
           </form>
           <div class="table-wrap">
@@ -144,7 +144,7 @@
         </section>
 
         <section class="tab-panel" data-panel="search">
-          <h2>כרטיסיית חיפוש וסינון</h2>
+          <h2>חיפוש וסינון</h2>
           <div class="search-grid">
             <label>
               חיפוש חופשי
@@ -236,7 +236,7 @@
           </div>
 
           <div class="summary-actions">
-            <button id="apply-range-btn" class="btn" type="button">החל טווח שורות</button>
+            <button id="apply-range-btn" class="btn" type="button">החל טווח</button>
             <button id="select-all-rows-btn" class="btn" type="button">בחר הכל</button>
             <button id="clear-all-rows-btn" class="btn" type="button">נקה בחירה</button>
             <button id="import-excel-btn" class="btn primary" type="button">ייבוא מאקסל</button>
