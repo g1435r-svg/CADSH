@@ -1,894 +1,633 @@
-const STORAGE_KEY = "maaser-chomesh-data-v2";
-const PROFILES_KEY = "maaser-chomesh-import-profiles-v1";
-const PROFILE_SETTINGS_KEY = "maaser-chomesh-import-profile-settings-v1";
+/* ═══════════════════════════════════════════════════════════
+   מחשבון מעשרות וחומש — v5.0
+   ═══════════════════════════════════════════════════════════ */
 
-/** @type {{ entries: Array<any>, version: string, date: string }} */
-let state = {
-  entries: [],
-  version: "4.0",
-  date: new Date().toISOString()
-};
+const STORAGE_KEY      = "maaser-chomesh-data-v2";
+const PROFILES_KEY     = "maaser-chomesh-import-profiles-v1";
+const PROF_SETTINGS_KEY= "maaser-chomesh-import-profile-settings-v1";
+const THEME_KEY        = "maaser-chomesh-theme-v1";
 
-let activeTab = "all";
-let activeTopTab = "main";
-let reportChart = null;
-let excelRows = [];
-let excelWorkbook = null;
-let excelFileName = "";
-let noticeTimer = null;
+// ── State ────────────────────────────────────────────────
+let state = { entries: [], version: "5.0", date: new Date().toISOString() };
+let undoStack = [], redoStack = [];
 const MAX_HISTORY = 100;
-let undoStack = [];
-let redoStack = [];
+
+let activeSection = "dashboard";
+let activeTab     = "all";
+let sortField     = "date";
+let sortDir       = "desc";
+
+let excelRows = [], excelWorkbook = null, excelFileName = "";
 let manualSelectedRows = new Set();
-
-const els = {
-  form: document.getElementById("entry-form"),
-  editingId: document.getElementById("editing-id"),
-  saveBtn: document.getElementById("save-btn"),
-  cancelEditBtn: document.getElementById("cancel-edit-btn"),
-  type: document.getElementById("type"),
-  date: document.getElementById("date"),
-  hebrewDate: document.getElementById("hebrew-date"),
-  description: document.getElementById("description"),
-  amount: document.getElementById("amount"),
-  recipient: document.getElementById("recipient"),
-  recipientWrap: document.getElementById("recipient-wrap"),
-  notes: document.getElementById("notes"),
-  entriesBodyAll: document.getElementById("entries-body-all"),
-  entriesBodyIncome: document.getElementById("entries-body-income"),
-  entriesBodyDonation: document.getElementById("entries-body-donation"),
-  tabPanels: {
-    all: document.getElementById("panel-all"),
-    income: document.getElementById("panel-income"),
-    donation: document.getElementById("panel-donation")
-  },
-  rowTemplate: document.getElementById("row-template"),
-  totalIncome: document.getElementById("total-income"),
-  maaserTarget: document.getElementById("maaser-target"),
-  chomeshTarget: document.getElementById("chomesh-target"),
-  totalDonations: document.getElementById("total-donations"),
-  remainingMaaser: document.getElementById("remaining-maaser"),
-  remainingChomesh: document.getElementById("remaining-chomesh"),
-  maaserStatusCard: document.getElementById("maaser-status-card"),
-  chomeshStatusCard: document.getElementById("chomesh-status-card"),
-  maaserStatusNote: document.getElementById("maaser-status-note"),
-  chomeshStatusNote: document.getElementById("chomesh-status-note"),
-  search: document.getElementById("search"),
-  filterYear: document.getElementById("filter-year"),
-  fromDate: document.getElementById("from-date"),
-  toDate: document.getElementById("to-date"),
-  tabBtns: Array.from(document.querySelectorAll(".tab-btn")),
-  topTabMain: document.getElementById("top-tab-main"),
-  topTabImport: document.getElementById("top-tab-import"),
-  topPanelMain: document.getElementById("top-panel-main"),
-  topPanelImport: document.getElementById("top-panel-import"),
-  appNotice: document.getElementById("app-notice"),
-  importSteps: Array.from(document.querySelectorAll("#import-steps .import-step")),
-  undoBtn: document.getElementById("undo-btn"),
-  redoBtn: document.getElementById("redo-btn"),
-  exportBtn: document.getElementById("export-btn"),
-  exportCsvBtn: document.getElementById("export-csv-btn"),
-  exportXlsxBtn: document.getElementById("export-xlsx-btn"),
-  importInput: document.getElementById("import-input"),
-  clearBtn: document.getElementById("clear-btn"),
-  reportYear: document.getElementById("report-year"),
-  reportMode: document.getElementById("report-mode"),
-  reportChart: document.getElementById("report-chart"),
-  excelInput: document.getElementById("excel-input"),
-  excelSheet: document.getElementById("excel-sheet"),
-  excelType: document.getElementById("excel-type"),
-  excelAmountMode: document.getElementById("excel-amount-mode"),
-  excelHasHeader: document.getElementById("excel-has-header"),
-  excelFixedDate: document.getElementById("excel-fixed-date"),
-  excelMapper: document.getElementById("excel-mapper"),
-  profileName: document.getElementById("profile-name"),
-  saveProfileBtn: document.getElementById("save-profile-btn"),
-  profileSelect: document.getElementById("profile-select"),
-  loadProfileBtn: document.getElementById("load-profile-btn"),
-  deleteProfileBtn: document.getElementById("delete-profile-btn"),
-  setDefaultProfileBtn: document.getElementById("set-default-profile-btn"),
-  clearDefaultProfileBtn: document.getElementById("clear-default-profile-btn"),
-  autoProfileMode: document.getElementById("auto-profile-mode"),
-  exportProfilesBtn: document.getElementById("export-profiles-btn"),
-  importProfilesInput: document.getElementById("import-profiles-input"),
-  mapDescription: document.getElementById("map-description"),
-  mapAmount: document.getElementById("map-amount"),
-  mapDate: document.getElementById("map-date"),
-  mapNotes: document.getElementById("map-notes"),
-  mapRecipient: document.getElementById("map-recipient"),
-  excelRowMode: document.getElementById("excel-row-mode"),
-  excelImportSearch: document.getElementById("excel-import-search"),
-  excelStartRow: document.getElementById("excel-start-row"),
-  selectAllRowsBtn: document.getElementById("select-all-rows-btn"),
-  clearAllRowsBtn: document.getElementById("clear-all-rows-btn"),
-  selectedRowsCounter: document.getElementById("selected-rows-counter"),
-  autoMapBtn: document.getElementById("auto-map-btn"),
-  excelRawPreview: document.getElementById("excel-raw-preview"),
-  excelParsedPreview: document.getElementById("excel-parsed-preview"),
-  excelLegacyPreview: document.getElementById("excel-legacy-preview"),
-  importExcelBtn: document.getElementById("import-excel-btn"),
-  quickImportBtn: document.getElementById("quick-import-btn")
-};
-
-/** @type {Record<string, any>} */
 let importProfiles = {};
-let profileSettings = {
-  defaultProfile: "",
-  autoProfileMode: "on"
+let profileSettings = { defaultProfile: "", autoProfileMode: "on" };
+
+let reportChart   = null;
+let categoryChart = null;
+let toastTimer    = null;
+let modalCb       = null;
+
+// ── Element Cache ─────────────────────────────────────────
+const el = id => document.getElementById(id);
+const els = {
+  // nav
+  navItems      : Array.from(document.querySelectorAll(".nav-item[data-section]")),
+  themeToggle   : el("theme-toggle"),
+  themeIcon     : el("theme-icon"),
+  themeLabel    : el("theme-label"),
+  undoBtn       : el("undo-btn"),
+  redoBtn       : el("redo-btn"),
+  exportBtn     : el("export-btn"),
+  importInput   : el("import-input"),
+  exportCsvBtn  : el("export-csv-btn"),
+  exportXlsxBtn : el("export-xlsx-btn"),
+  // toast / modal
+  toast         : el("toast"),
+  modalOverlay  : el("modal-overlay"),
+  modalTitle    : el("modal-title"),
+  modalMsg      : el("modal-msg"),
+  modalOk       : el("modal-ok"),
+  modalCancel   : el("modal-cancel"),
+  // dashboard
+  dashboardDate    : el("dashboard-date"),
+  totalIncome      : el("total-income"),
+  totalDonations   : el("total-donations"),
+  maaserStatusCard : el("maaser-status-card"),
+  maaserTarget     : el("maaser-target"),
+  maaserProgress   : el("maaser-progress"),
+  maaserStatusNote : el("maaser-status-note"),
+  chomeshStatusCard: el("chomesh-status-card"),
+  chomeshTarget    : el("chomesh-target"),
+  chomeshProgress  : el("chomesh-progress"),
+  chomeshStatusNote: el("chomesh-status-note"),
+  remainingMaaser  : el("remaining-maaser"),
+  remainingChomesh : el("remaining-chomesh"),
+  recentList       : el("recent-list"),
+  viewAllBtn       : el("view-all-btn"),
+  // form
+  form          : el("entry-form"),
+  editingId     : el("editing-id"),
+  typeEl        : el("type"),
+  dateEl        : el("date"),
+  hebrewDate    : el("hebrew-date"),
+  description   : el("description"),
+  amount        : el("amount"),
+  recipientWrap : el("recipient-wrap"),
+  recipient     : el("recipient"),
+  categoryWrap  : el("category-wrap"),
+  category      : el("category"),
+  notes         : el("notes"),
+  saveBtn       : el("save-btn"),
+  cancelEditBtn : el("cancel-edit-btn"),
+  clearBtn      : el("clear-btn"),
+  // transactions
+  tabBtns       : Array.from(document.querySelectorAll(".tab-btn")),
+  search        : el("search"),
+  filterYear    : el("filter-year"),
+  fromDate      : el("from-date"),
+  toDate        : el("to-date"),
+  filterCategory: el("filter-category"),
+  filterSummary : el("filter-summary"),
+  entriesBody   : el("entries-body"),
+  tableFooter   : el("table-footer"),
+  printBtn      : el("print-btn"),
+  tableHeaders  : Array.from(document.querySelectorAll("#main-table th[data-sort]")),
+  rowTemplate   : el("row-template"),
+  // reports
+  reportYear    : el("report-year"),
+  reportMode    : el("report-mode"),
+  reportChartEl : el("report-chart"),
+  statsList     : el("stats-list"),
+  categoryChartEl: el("category-chart"),
+  categoryLegend : el("category-legend"),
+  yearlySummary  : el("yearly-summary"),
+  // import
+  uploadZone    : el("upload-zone"),
+  excelInput    : el("excel-input"),
+  excelMapper   : el("excel-mapper"),
+  importSteps   : Array.from(document.querySelectorAll("#import-steps .import-step")),
+  excelSheet    : el("excel-sheet"),
+  excelType     : el("excel-type"),
+  excelAmountMode: el("excel-amount-mode"),
+  excelHasHeader : el("excel-has-header"),
+  excelFixedDate : el("excel-fixed-date"),
+  excelStartRow  : el("excel-start-row"),
+  profileName    : el("profile-name"),
+  saveProfileBtn : el("save-profile-btn"),
+  profileSelect  : el("profile-select"),
+  loadProfileBtn : el("load-profile-btn"),
+  deleteProfileBtn: el("delete-profile-btn"),
+  setDefaultProfileBtn  : el("set-default-profile-btn"),
+  clearDefaultProfileBtn: el("clear-default-profile-btn"),
+  autoProfileMode: el("auto-profile-mode"),
+  exportProfilesBtn : el("export-profiles-btn"),
+  importProfilesInput: el("import-profiles-input"),
+  mapDescription : el("map-description"),
+  mapAmount      : el("map-amount"),
+  mapDate        : el("map-date"),
+  mapNotes       : el("map-notes"),
+  mapRecipient   : el("map-recipient"),
+  excelRowMode   : el("excel-row-mode"),
+  autoMapBtn     : el("auto-map-btn"),
+  excelImportSearch: el("excel-import-search"),
+  selectAllRowsBtn: el("select-all-rows-btn"),
+  clearAllRowsBtn : el("clear-all-rows-btn"),
+  selectedRowsCounter: el("selected-rows-counter"),
+  excelRawPreview: el("excel-raw-preview"),
+  excelParsedPreview: el("excel-parsed-preview"),
+  quickImportBtn : el("quick-import-btn"),
+  importExcelBtn : el("import-excel-btn"),
 };
 
+// ══════════════════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════════════════
 function formatCurrency(num) {
   return new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS" }).format(num || 0);
 }
 
-function toNumber(value) {
-  const n = Number(value);
+function toNumber(v) {
+  const n = Number(v);
   return Number.isFinite(n) ? n : 0;
 }
 
 function toIsoDate(value) {
   if (!value) return "";
   if (typeof value === "number") {
-    const parsed = XLSX.SSF.parse_date_code(value);
-    if (!parsed) return "";
-    const month = String(parsed.m).padStart(2, "0");
-    const day = String(parsed.d).padStart(2, "0");
-    return `${parsed.y}-${month}-${day}`;
+    const p = XLSX.SSF.parse_date_code(value);
+    if (!p) return "";
+    return `${p.y}-${String(p.m).padStart(2,"0")}-${String(p.d).padStart(2,"0")}`;
   }
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   if (typeof value === "string") {
-    const s = value.trim();
-    const m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
+    const m = value.trim().match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
     if (m) {
-      const day = Number(m[1]);
-      const month = Number(m[2]);
-      let year = Number(m[3]);
-      if (year < 100) year += year >= 70 ? 1900 : 2000;
-      if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2200) {
-        return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      }
+      let [,d,mo,y] = m.map(Number);
+      if (y < 100) y += y >= 70 ? 1900 : 2000;
+      if (d>=1&&d<=31&&mo>=1&&mo<=12&&y>=1900&&y<=2200)
+        return `${y}-${String(mo).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
     }
   }
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toISOString().slice(0, 10);
+  return isNaN(d) ? "" : d.toISOString().slice(0,10);
 }
 
-function toHebrewLetters(num) {
-  const ones = ["", "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט"];
-  const tens = ["", "י", "כ", "ל", "מ", "נ", "ס", "ע", "פ", "צ"];
-  const hundreds = ["", "ק", "ר", "ש", "ת", "תק", "תר", "תש", "תת", "תתק"];
-
-  let n = Number(num);
-  if (!Number.isInteger(n) || n <= 0) return "";
-
-  let result = "";
-  const h = Math.floor(n / 100);
-  if (h > 0) {
-    result += hundreds[h] || "";
-  }
-
-  n = n % 100;
-  if (n === 15) return result + "טו";
-  if (n === 16) return result + "טז";
-
-  const t = Math.floor(n / 10);
-  const o = n % 10;
-  result += tens[t] || "";
-  result += ones[o] || "";
-
-  return result;
+function toHebrewLetters(n) {
+  const ones   = ["","א","ב","ג","ד","ה","ו","ז","ח","ט"];
+  const tens   = ["","י","כ","ל","מ","נ","ס","ע","פ","צ"];
+  const hunds  = ["","ק","ר","ש","ת","תק","תר","תש","תת","תתק"];
+  n = Number(n);
+  if (!Number.isInteger(n)||n<=0) return "";
+  let r = "";
+  const h = Math.floor(n/100);
+  if (h>0) r += hunds[h]||"";
+  n %= 100;
+  if (n===15) return r+"טו";
+  if (n===16) return r+"טז";
+  r += tens[Math.floor(n/10)]||"";
+  r += ones[n%10]||"";
+  return r;
 }
 
-function addGereshGershayim(hebrewText) {
-  if (!hebrewText) return "";
-  if (hebrewText.length === 1) return `${hebrewText}׳`;
-  return `${hebrewText.slice(0, -1)}״${hebrewText.slice(-1)}`;
+function addGeresh(t) {
+  if (!t) return "";
+  if (t.length===1) return t+"׳";
+  return t.slice(0,-1)+"״"+t.slice(-1);
 }
 
-function toHebrewDate(gregorianDate) {
-  if (!gregorianDate) return "";
-  const parsed = new Date(gregorianDate);
-  if (Number.isNaN(parsed.getTime())) return "";
-
+function toHebrewDate(greg) {
+  if (!greg) return "";
+  const d = new Date(greg);
+  if (isNaN(d)) return "";
   try {
-    const parts = new Intl.DateTimeFormat("he-IL-u-ca-hebrew", {
-      day: "numeric",
-      month: "long",
-      year: "numeric"
-    }).formatToParts(parsed);
+    const parts = new Intl.DateTimeFormat("he-IL-u-ca-hebrew",{day:"numeric",month:"long",year:"numeric"}).formatToParts(d);
+    const get = type => parts.find(p=>p.type===type);
+    const dayPart=get("day"), monPart=get("month"), yrPart=get("year");
+    if (!dayPart||!monPart||!yrPart) return "";
+    const dH = addGeresh(toHebrewLetters(Number(dayPart.value)));
+    const yH = addGeresh(toHebrewLetters(Number(yrPart.value)%1000));
+    return `${dH} ${monPart.value.trim()} ${yH}`;
+  } catch { return ""; }
+}
 
-    const dayPart = parts.find((p) => p.type === "day");
-    const monthPart = parts.find((p) => p.type === "month");
-    const yearPart = parts.find((p) => p.type === "year");
+function todayIso() { return new Date().toISOString().slice(0,10); }
+function nowIso()   { return new Date().toISOString(); }
 
-    if (!dayPart || !monthPart || !yearPart) return "";
+// ══════════════════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════════════════
+function showToast(msg, type="info", ms=3000) {
+  const t = els.toast;
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ t.classList.remove("show"); }, ms);
+}
 
-    const dayNum = Number(dayPart.value);
-    const yearNum = Number(yearPart.value) % 1000;
-    const dayHebrew = addGereshGershayim(toHebrewLetters(dayNum));
-    const yearHebrew = addGereshGershayim(toHebrewLetters(yearNum));
-    const monthHebrew = monthPart.value.trim();
+// ══════════════════════════════════════════════════════════
+//  MODAL
+// ══════════════════════════════════════════════════════════
+function showModal(title, msg, onConfirm) {
+  els.modalTitle.textContent = title;
+  els.modalMsg.textContent = msg;
+  els.modalOverlay.hidden = false;
+  modalCb = onConfirm;
+}
 
-    if (!dayHebrew || !monthHebrew || !yearHebrew) return "";
-    return `${dayHebrew} ${monthHebrew} ${yearHebrew}`;
-  } catch (e) {
-    console.error("Hebrew date parsing error:", e);
-    return "";
+function closeModal() {
+  els.modalOverlay.hidden = true;
+  modalCb = null;
+}
+
+// ══════════════════════════════════════════════════════════
+//  THEME
+// ══════════════════════════════════════════════════════════
+function applyTheme(dark) {
+  document.documentElement.dataset.theme = dark ? "dark" : "";
+  els.themeIcon.textContent  = dark ? "☀️" : "🌙";
+  els.themeLabel.textContent = dark ? "מצב יום" : "מצב לילה";
+  localStorage.setItem(THEME_KEY, dark ? "dark" : "light");
+  if (reportChart)   renderReportChart();
+  if (categoryChart) renderCategoryChart();
+}
+
+function loadTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved === "dark" || (!saved && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+    applyTheme(true);
   }
+}
+
+// ══════════════════════════════════════════════════════════
+//  SECTION NAVIGATION
+// ══════════════════════════════════════════════════════════
+function switchSection(name) {
+  activeSection = name;
+  els.navItems.forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.section === name);
+  });
+  document.querySelectorAll(".section").forEach(s => {
+    s.classList.toggle("hidden", s.id !== `section-${name}`);
+    s.classList.toggle("active", s.id === `section-${name}`);
+  });
+  if (name === "reports") {
+    renderReportChart();
+    renderCategoryChart();
+    renderStats();
+    renderYearlySummary();
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  STATE PERSISTENCE
+// ══════════════════════════════════════════════════════════
+function normalizeEntry(e) {
+  return {
+    id         : e.id || `${Date.now()}-${Math.random()}`,
+    type       : e.type === "donation" ? "donation" : "income",
+    date       : toIsoDate(e.date) || todayIso(),
+    description: String(e.description || ""),
+    amount     : toNumber(e.amount),
+    recipient  : String(e.recipient || ""),
+    category   : String(e.category || ""),
+    notes      : String(e.notes || ""),
+    hebrewDate : String(e.hebrewDate || toHebrewDate(toIsoDate(e.date)))
+  };
 }
 
 function saveState() {
-  state.date = new Date().toISOString();
+  state.date = nowIso();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-function cloneEntries(entries) {
-  return entries.map((e) => ({ ...e }));
+function loadState() {
+  const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem("maaser-chomesh-data-v1");
+  if (!raw) return;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.entries)) return;
+    state = {
+      entries: parsed.entries.map(normalizeEntry),
+      version: parsed.version || "5.0",
+      date   : parsed.date || nowIso()
+    };
+    saveState();
+  } catch { console.warn("Failed to parse state"); }
 }
 
-function updateUndoRedoButtons() {
+// ══════════════════════════════════════════════════════════
+//  UNDO / REDO
+// ══════════════════════════════════════════════════════════
+function cloneEntries(arr) { return arr.map(e => ({...e})); }
+
+function pushHistory() {
+  undoStack.push(cloneEntries(state.entries));
+  if (undoStack.length > MAX_HISTORY) undoStack.shift();
+  redoStack = [];
+  updateUndoRedo();
+}
+
+function updateUndoRedo() {
   if (els.undoBtn) els.undoBtn.disabled = undoStack.length === 0;
   if (els.redoBtn) els.redoBtn.disabled = redoStack.length === 0;
 }
 
-function showNotice(message, type = "info", timeoutMs = 3200) {
-  if (!els.appNotice) return;
-  els.appNotice.textContent = message;
-  els.appNotice.classList.remove("hidden", "success", "error");
-  if (type === "success") els.appNotice.classList.add("success");
-  if (type === "error") els.appNotice.classList.add("error");
-
-  if (noticeTimer) {
-    clearTimeout(noticeTimer);
-    noticeTimer = null;
-  }
-  if (timeoutMs > 0) {
-    noticeTimer = setTimeout(() => {
-      els.appNotice.classList.add("hidden");
-    }, timeoutMs);
-  }
-}
-
-function setImportStep(step) {
-  if (!els.importSteps || !els.importSteps.length) return;
-  const activeStep = Math.max(1, Math.min(4, Number(step) || 1));
-  els.importSteps.forEach((el) => {
-    const n = Number(el.dataset.step || 0);
-    el.classList.toggle("active", n === activeStep);
-  });
-}
-
-function pushHistorySnapshot() {
-  undoStack.push(cloneEntries(state.entries));
-  if (undoStack.length > MAX_HISTORY) {
-    undoStack.shift();
-  }
-  redoStack = [];
-  updateUndoRedoButtons();
-}
-
-function undoLastAction() {
+function undo() {
   if (!undoStack.length) return;
   redoStack.push(cloneEntries(state.entries));
   state.entries = undoStack.pop();
-  saveState();
-  rerender();
-  updateUndoRedoButtons();
+  saveState(); rerender(); updateUndoRedo();
 }
 
-function redoLastAction() {
+function redo() {
   if (!redoStack.length) return;
   undoStack.push(cloneEntries(state.entries));
   state.entries = redoStack.pop();
-  saveState();
-  rerender();
-  updateUndoRedoButtons();
+  saveState(); rerender(); updateUndoRedo();
 }
 
-function loadProfiles() {
-  const raw = localStorage.getItem(PROFILES_KEY);
-  if (!raw) return;
-  try {
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object") {
-      importProfiles = parsed;
-    }
-  } catch (_err) {
-    importProfiles = {};
-  }
-}
-
-function loadProfileSettings() {
-  const raw = localStorage.getItem(PROFILE_SETTINGS_KEY);
-  if (!raw) return;
-  try {
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object") {
-      profileSettings.defaultProfile = parsed.defaultProfile || "";
-      profileSettings.autoProfileMode = parsed.autoProfileMode === "off" ? "off" : "on";
-    }
-  } catch (_err) {
-    profileSettings = { defaultProfile: "", autoProfileMode: "on" };
-  }
-}
-
-function saveProfileSettings() {
-  localStorage.setItem(PROFILE_SETTINGS_KEY, JSON.stringify(profileSettings));
-}
-
-function saveProfiles() {
-  localStorage.setItem(PROFILES_KEY, JSON.stringify(importProfiles));
-}
-
-function renderProfileOptions() {
-  const names = Object.keys(importProfiles).sort((a, b) => a.localeCompare(b, "he"));
-  const options = ['<option value="">בחר תבנית...</option>']
-    .concat(names.map((n) => `<option value="${n}">${n}</option>`))
-    .join("");
-  els.profileSelect.innerHTML = options;
-  els.autoProfileMode.value = profileSettings.autoProfileMode;
-}
-
-function updateDefaultProfileUiHint() {
-  const current = profileSettings.defaultProfile;
-  if (!current || !importProfiles[current]) return;
-  if (!els.profileSelect.value) {
-    els.profileSelect.value = current;
-  }
-}
-
-function getCurrentMappingModel() {
-  return {
-    excelType: els.excelType.value,
-    excelAmountMode: els.excelAmountMode.value,
-    excelHasHeader: els.excelHasHeader.value,
-    mapDescription: els.mapDescription.value,
-    mapAmount: els.mapAmount.value,
-    mapDate: els.mapDate.value,
-    mapNotes: els.mapNotes.value,
-    mapRecipient: els.mapRecipient.value
-  };
-}
-
-function applyMappingModel(model) {
-  if (!model) return;
-  els.excelType.value = model.excelType || els.excelType.value;
-  els.excelAmountMode.value = model.excelAmountMode || els.excelAmountMode.value;
-  els.excelHasHeader.value = model.excelHasHeader || els.excelHasHeader.value;
-  els.mapDescription.value = model.mapDescription ?? els.mapDescription.value;
-  els.mapAmount.value = model.mapAmount ?? els.mapAmount.value;
-  els.mapDate.value = model.mapDate ?? els.mapDate.value;
-  els.mapNotes.value = model.mapNotes ?? els.mapNotes.value;
-  els.mapRecipient.value = model.mapRecipient ?? els.mapRecipient.value;
-  renderExcelPreview();
-  renderParsedExcelPreview();
-}
-
-function saveCurrentProfile() {
-  const name = (els.profileName.value || "").trim();
-  if (!name) {
-    alert("יש להזין שם תבנית");
-    return;
-  }
-  importProfiles[name] = getCurrentMappingModel();
-  saveProfiles();
-  renderProfileOptions();
-  els.profileSelect.value = name;
-  updateDefaultProfileUiHint();
-  alert("התבנית נשמרה");
-}
-
-function loadSelectedProfile() {
-  const name = els.profileSelect.value;
-  if (!name || !importProfiles[name]) {
-    alert("לא נבחרה תבנית");
-    return;
-  }
-  applyMappingModel(importProfiles[name]);
-  els.profileName.value = name;
-  alert("התבנית נטענה");
-}
-
-function deleteSelectedProfile() {
-  const name = els.profileSelect.value;
-  if (!name || !importProfiles[name]) {
-    alert("לא נבחרה תבנית למחיקה");
-    return;
-  }
-  delete importProfiles[name];
-  if (profileSettings.defaultProfile === name) {
-    profileSettings.defaultProfile = "";
-    saveProfileSettings();
-  }
-  saveProfiles();
-  renderProfileOptions();
-  els.profileName.value = "";
-}
-
-function setDefaultProfile() {
-  const name = els.profileSelect.value;
-  if (!name || !importProfiles[name]) {
-    alert("בחר תבנית לפני קביעה כברירת מחדל");
-    return;
-  }
-  profileSettings.defaultProfile = name;
-  saveProfileSettings();
-  alert(`התבנית '${name}' נקבעה כברירת מחדל`);
-}
-
-function clearDefaultProfile() {
-  profileSettings.defaultProfile = "";
-  saveProfileSettings();
-  alert("ברירת המחדל נוקתה");
-}
-
-function onAutoProfileModeChange() {
-  profileSettings.autoProfileMode = els.autoProfileMode.value === "off" ? "off" : "on";
-  saveProfileSettings();
-}
-
-function exportProfilesJson() {
-  const payload = {
-    version: "1.0",
-    exportedAt: new Date().toISOString(),
-    settings: profileSettings,
-    profiles: importProfiles
-  };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `import_profiles_${new Date().toISOString().slice(0, 10)}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-async function importProfilesJson(file) {
-  const text = await file.text();
-  const parsed = JSON.parse(text);
-  if (!parsed || typeof parsed !== "object" || typeof parsed.profiles !== "object") {
-    throw new Error("קובץ תבניות לא תקין");
-  }
-
-  importProfiles = { ...importProfiles, ...parsed.profiles };
-  if (parsed.settings && typeof parsed.settings === "object") {
-    profileSettings.defaultProfile = parsed.settings.defaultProfile || profileSettings.defaultProfile;
-    profileSettings.autoProfileMode = parsed.settings.autoProfileMode === "off" ? "off" : profileSettings.autoProfileMode;
-  }
-
-  saveProfiles();
-  saveProfileSettings();
-  renderProfileOptions();
-  updateDefaultProfileUiHint();
-}
-
-function findProfileByFileName(fileName) {
-  const lower = (fileName || "").toLowerCase();
-  const names = Object.keys(importProfiles);
-  for (const name of names) {
-    const tokens = name
-      .toLowerCase()
-      .split(/[\s\-_]+/)
-      .filter((t) => t.length >= 3);
-    if (tokens.some((t) => lower.includes(t))) {
-      return name;
-    }
-  }
-  return "";
-}
-
-function applyBestProfileForCurrentFile() {
-  if (profileSettings.autoProfileMode === "off") return;
-
-  let name = findProfileByFileName(excelFileName);
-  if (!name && profileSettings.defaultProfile && importProfiles[profileSettings.defaultProfile]) {
-    name = profileSettings.defaultProfile;
-  }
-  if (!name) return;
-
-  applyMappingModel(importProfiles[name]);
-  els.profileSelect.value = name;
-  els.profileName.value = name;
-}
-
-function loadState() {
-  const current = localStorage.getItem(STORAGE_KEY);
-  const legacy = localStorage.getItem("maaser-chomesh-data-v1");
-  const raw = current || legacy;
-  if (!raw) return;
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (!parsed || !Array.isArray(parsed.entries)) return;
-
-    state = {
-      entries: parsed.entries.map((e) => ({
-        id: e.id || `${Date.now()}-${Math.random()}`,
-        type: e.type === "donation" ? "donation" : "income",
-        date: toIsoDate(e.date) || new Date().toISOString().slice(0, 10),
-        description: String(e.description || ""),
-        amount: toNumber(e.amount),
-        recipient: String(e.recipient || ""),
-        notes: String(e.notes || ""),
-        hebrewDate: String(e.hebrewDate || toHebrewDate(toIsoDate(e.date)))
-      })),
-      version: parsed.version || "4.0",
-      date: parsed.date || new Date().toISOString()
-    };
-
-    saveState();
-  } catch (_err) {
-    console.warn("Failed to parse local state");
-  }
-}
-
+// ══════════════════════════════════════════════════════════
+//  SUMMARY CALCULATIONS
+// ══════════════════════════════════════════════════════════
 function calcSummary(entries) {
-  const income = entries.filter((e) => e.type === "income").reduce((sum, e) => sum + toNumber(e.amount), 0);
-  const donations = entries
-    .filter((e) => e.type === "donation")
-    .reduce((sum, e) => sum + Math.max(0, toNumber(e.amount)), 0);
-  const maaser = Math.max(0, income * 0.1);
-  const chomesh = Math.max(0, income * 0.2);
-  const remainingMaaser = Math.max(0, maaser - donations);
-  const remainingChomesh = Math.max(0, chomesh - donations);
-  const surplusMaaser = Math.max(0, donations - maaser);
-  const surplusChomesh = Math.max(0, donations - chomesh);
-
+  const income    = entries.filter(e=>e.type==="income").reduce((s,e)=>s+toNumber(e.amount),0);
+  const donations = entries.filter(e=>e.type==="donation").reduce((s,e)=>s+Math.max(0,toNumber(e.amount)),0);
+  const maaser    = Math.max(0, income * 0.1);
+  const chomesh   = Math.max(0, income * 0.2);
+  const remMaaser = Math.max(0, maaser - donations);
+  const remChomesh= Math.max(0, chomesh - donations);
+  const surpMaaser = Math.max(0, donations - maaser);
+  const surpChomesh= Math.max(0, donations - chomesh);
   return {
-    income,
-    donations,
-    maaser,
-    chomesh,
-    remainingMaaser,
-    remainingChomesh,
-    surplusMaaser,
-    surplusChomesh,
-    isMaaserComplete: maaser > 0 && remainingMaaser === 0,
-    isChomeshComplete: chomesh > 0 && remainingChomesh === 0
+    income, donations, maaser, chomesh,
+    remMaaser, remChomesh, surpMaaser, surpChomesh,
+    maaserPct : maaser > 0 ? Math.min(100, (donations / maaser) * 100) : 0,
+    chomeshPct: chomesh > 0 ? Math.min(100, (donations / chomesh) * 100) : 0,
+    isMaaserDone : maaser > 0 && remMaaser === 0,
+    isChomeshDone: chomesh > 0 && remChomesh === 0
   };
 }
 
-function rowTypeLabel(type) {
-  return type === "donation" ? "תרומה" : "הכנסה";
+// ══════════════════════════════════════════════════════════
+//  RENDER SUMMARY
+// ══════════════════════════════════════════════════════════
+function renderSummary() {
+  const s = calcSummary(state.entries);
+  els.totalIncome.textContent   = formatCurrency(s.income);
+  els.totalDonations.textContent= formatCurrency(s.donations);
+  els.maaserTarget.textContent  = formatCurrency(s.maaser);
+  els.chomeshTarget.textContent = formatCurrency(s.chomesh);
+  els.remainingMaaser.textContent  = formatCurrency(s.remMaaser);
+  els.remainingChomesh.textContent = formatCurrency(s.remChomesh);
+
+  // Progress bars
+  els.maaserProgress.style.width  = `${s.maaserPct}%`;
+  els.chomeshProgress.style.width = `${s.chomeshPct}%`;
+
+  // Status notes
+  if (s.isMaaserDone) {
+    els.maaserStatusNote.textContent = s.surpMaaser > 0
+      ? `✅ הושלם! עודף: ${formatCurrency(s.surpMaaser)}`
+      : "✅ הושלם!";
+    els.maaserStatusCard.classList.add("done");
+  } else if (s.maaser > 0) {
+    els.maaserStatusNote.textContent = `יתרה: ${formatCurrency(s.remMaaser)} (${(s.maaserPct).toFixed(0)}%)`;
+    els.maaserStatusCard.classList.remove("done");
+  } else {
+    els.maaserStatusNote.textContent = "אין חובת מעשר";
+    els.maaserStatusCard.classList.remove("done");
+  }
+
+  if (s.isChomeshDone) {
+    els.chomeshStatusNote.textContent = s.surpChomesh > 0
+      ? `✅ הושלם! עודף: ${formatCurrency(s.surpChomesh)}`
+      : "✅ הושלם!";
+    els.chomeshStatusCard.classList.add("done");
+  } else if (s.chomesh > 0) {
+    els.chomeshStatusNote.textContent = `יתרה: ${formatCurrency(s.remChomesh)} (${(s.chomeshPct).toFixed(0)}%)`;
+    els.chomeshStatusCard.classList.remove("done");
+  } else {
+    els.chomeshStatusNote.textContent = "אין חובת חומש";
+    els.chomeshStatusCard.classList.remove("done");
+  }
+
+  // Dashboard date
+  if (els.dashboardDate) {
+    const today = new Date();
+    els.dashboardDate.textContent = today.toLocaleDateString("he-IL",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+  }
 }
 
+// ══════════════════════════════════════════════════════════
+//  RENDER RECENT LIST
+// ══════════════════════════════════════════════════════════
+function renderRecent() {
+  const sorted = state.entries.slice().sort((a,b) => a.date < b.date ? 1 : -1).slice(0, 8);
+  if (!sorted.length) {
+    els.recentList.innerHTML = `<li class="recent-empty">אין רשומות עדיין. הוסף הכנסה או תרומה למעלה.</li>`;
+    return;
+  }
+  els.recentList.innerHTML = sorted.map(e => {
+    const cls = e.type === "income" ? "income" : "donation";
+    const sign = e.type === "donation" ? "-" : "+";
+    return `<li class="recent-item">
+      <span class="recent-badge ${cls}"></span>
+      <span class="recent-desc" title="${e.description}">${e.description}</span>
+      <span class="recent-amount ${cls}">${sign}${formatCurrency(Math.abs(toNumber(e.amount)))}</span>
+      <span class="recent-date">${e.date}</span>
+    </li>`;
+  }).join("");
+}
+
+// ══════════════════════════════════════════════════════════
+//  FILTER & SORT
+// ══════════════════════════════════════════════════════════
 function getFilteredEntries() {
-  const q = (els.search.value || "").trim().toLowerCase();
-  const filterYear = (els.filterYear && els.filterYear.value) || "";
+  const q    = (els.search.value||"").trim().toLowerCase();
+  const year = (els.filterYear.value||"");
   const from = els.fromDate.value;
-  const to = els.toDate.value;
+  const to   = els.toDate.value;
+  const cat  = els.filterCategory.value;
 
-  return state.entries.filter((entry) => {
-    if (activeTab !== "all" && entry.type !== activeTab) return false;
-    if (filterYear && !String(entry.date || "").startsWith(`${filterYear}-`)) return false;
-    if (from && entry.date < from) return false;
-    if (to && entry.date > to) return false;
-
+  return state.entries.filter(e => {
+    if (activeTab !== "all" && e.type !== activeTab) return false;
+    if (year && !String(e.date||"").startsWith(`${year}-`)) return false;
+    if (from && e.date < from) return false;
+    if (to   && e.date > to)   return false;
+    if (cat  && e.category !== cat) return false;
     if (!q) return true;
-    const haystack = [entry.description, entry.notes, entry.recipient].filter(Boolean).join(" ").toLowerCase();
-    return haystack.includes(q);
+    const hay = [e.description, e.notes, e.recipient, e.category].filter(Boolean).join(" ").toLowerCase();
+    return hay.includes(q);
   });
 }
 
-function renderFilterYearOptions() {
-  if (!els.filterYear) return;
-  const prev = els.filterYear.value;
-  const years = Array.from(new Set(
-    state.entries
-      .map((e) => Number(String(e.date || "").slice(0, 4)))
-      .filter((n) => Number.isFinite(n) && n > 1900)
-  )).sort((a, b) => b - a);
-
-  const options = ['<option value="">כל השנים</option>']
-    .concat(years.map((y) => `<option value="${y}">${y}</option>`))
-    .join("");
-  els.filterYear.innerHTML = options;
-  if (prev && years.includes(Number(prev))) {
-    els.filterYear.value = prev;
-  }
+function sortEntries(list) {
+  return list.slice().sort((a,b) => {
+    let av = a[sortField], bv = b[sortField];
+    if (sortField === "amount") { av = Math.abs(toNumber(av)); bv = Math.abs(toNumber(bv)); }
+    if (av < bv) return sortDir === "asc" ? -1 : 1;
+    if (av > bv) return sortDir === "asc" ?  1 : -1;
+    return 0;
+  });
 }
 
-function renderSummary() {
-  const s = calcSummary(state.entries);
-  els.totalIncome.textContent = formatCurrency(s.income);
-  els.maaserTarget.textContent = formatCurrency(s.maaser);
-  els.chomeshTarget.textContent = formatCurrency(s.chomesh);
-  els.totalDonations.textContent = formatCurrency(s.donations);
-  els.remainingMaaser.textContent = formatCurrency(s.remainingMaaser);
-  els.remainingChomesh.textContent = formatCurrency(s.remainingChomesh);
-
-  if (els.maaserStatusCard) {
-    els.maaserStatusCard.classList.toggle("goal-complete", s.isMaaserComplete);
-    els.maaserStatusCard.classList.toggle("goal-pending", s.maaser > 0 && !s.isMaaserComplete);
-  }
-  if (els.chomeshStatusCard) {
-    els.chomeshStatusCard.classList.toggle("goal-complete", s.isChomeshComplete);
-    els.chomeshStatusCard.classList.toggle("goal-pending", s.chomesh > 0 && !s.isChomeshComplete);
-  }
-
-  if (els.maaserStatusNote) {
-    if (s.isMaaserComplete) {
-      els.maaserStatusNote.textContent = s.surplusMaaser > 0
-        ? `הושלם. יתרה מעבר למעשר: ${formatCurrency(s.surplusMaaser)}`
-        : "הושלם.";
-    } else if (s.maaser > 0) {
-      els.maaserStatusNote.textContent = `יתרה למעשר: ${formatCurrency(s.remainingMaaser)}`;
-    } else {
-      els.maaserStatusNote.textContent = "אין חובת מעשר כרגע.";
-    }
-  }
-
-  if (els.chomeshStatusNote) {
-    if (s.isChomeshComplete) {
-      els.chomeshStatusNote.textContent = s.surplusChomesh > 0
-        ? `הושלם. יתרה מעבר לחומש: ${formatCurrency(s.surplusChomesh)}`
-        : "הושלם.";
-    } else if (s.chomesh > 0) {
-      els.chomeshStatusNote.textContent = `יתרה לחומש: ${formatCurrency(s.remainingChomesh)}`;
-    } else {
-      els.chomeshStatusNote.textContent = "אין חובת חומש כרגע.";
-    }
-  }
+// ══════════════════════════════════════════════════════════
+//  RENDER TABLE
+// ══════════════════════════════════════════════════════════
+function renderFilterYearOptions() {
+  const prev  = els.filterYear.value;
+  const years = Array.from(new Set(state.entries.map(e=>Number(String(e.date||"").slice(0,4))).filter(n=>n>1900))).sort((a,b)=>b-a);
+  els.filterYear.innerHTML = '<option value="">כל השנים</option>' + years.map(y=>`<option value="${y}">${y}</option>`).join("");
+  if (prev && years.includes(Number(prev))) els.filterYear.value = prev;
 }
 
 function renderTable() {
-  const sortedAll = state.entries.slice().sort((a, b) => (a.date < b.date ? 1 : -1));
-  const filteredAll = getFilteredEntries().slice().sort((a, b) => (a.date < b.date ? 1 : -1));
-  const incomes = sortedAll.filter((x) => x.type === "income");
-  const donations = sortedAll.filter((x) => x.type === "donation");
+  const filtered = getFilteredEntries();
+  const sorted   = sortEntries(filtered);
 
-  fillTableBody(els.entriesBodyAll, filteredAll);
-  fillTableBody(els.entriesBodyIncome, incomes);
-  fillTableBody(els.entriesBodyDonation, donations);
-}
-
-function fillTableBody(bodyEl, list) {
-  bodyEl.innerHTML = "";
-  for (const item of list) {
+  els.entriesBody.innerHTML = "";
+  for (const item of sorted) {
     const frag = els.rowTemplate.content.cloneNode(true);
-    const row = frag.querySelector("tr");
-    row.querySelector('[data-k="type"]').textContent = rowTypeLabel(item.type);
-    row.querySelector('[data-k="date"]').textContent = item.date;
-    row.querySelector('[data-k="hebrewDate"]').textContent = toHebrewDate(item.date) || item.hebrewDate || "-";
-    row.querySelector('[data-k="description"]').textContent = item.description || "";
-    row.querySelector('[data-k="amount"]').textContent = formatCurrency(toNumber(item.amount));
-    row.querySelector('[data-k="recipient"]').textContent = item.recipient || "-";
-    row.querySelector('[data-k="notes"]').textContent = item.notes || "-";
-    row.querySelector('[data-action="edit"]').dataset.id = String(item.id);
+    const row  = frag.querySelector("tr");
+    const typeCls = item.type === "donation" ? "donation" : "income";
+    const typeLabel = item.type === "donation" ? "🤲 תרומה" : "💰 הכנסה";
+    row.querySelector('[data-k="type"]').innerHTML =
+      `<span class="type-badge ${typeCls}">${typeLabel}</span>`;
+    row.querySelector('[data-k="date"]').textContent       = item.date;
+    row.querySelector('[data-k="hebrewDate"]').textContent = toHebrewDate(item.date)||item.hebrewDate||"-";
+    row.querySelector('[data-k="description"]').textContent= item.description||"";
+    const amtCell = row.querySelector('[data-k="amount"]');
+    amtCell.textContent = formatCurrency(toNumber(item.amount));
+    amtCell.classList.add(typeCls+"-amount");
+    row.querySelector('[data-k="category"]').innerHTML =
+      item.category ? `<span class="cat-badge">${item.category}</span>` : '<span style="color:var(--muted)">—</span>';
+    row.querySelector('[data-k="recipient"]').textContent  = item.recipient||"-";
+    row.querySelector('[data-k="notes"]').textContent      = item.notes||"-";
+    row.querySelector('[data-action="edit"]').dataset.id   = String(item.id);
     row.querySelector('[data-action="delete"]').dataset.id = String(item.id);
-    bodyEl.appendChild(frag);
+    els.entriesBody.appendChild(frag);
   }
-}
 
-function renderTabPanels() {
-  Object.entries(els.tabPanels).forEach(([name, panel]) => {
-    panel.classList.toggle("hidden", name !== activeTab);
+  // Summary footer
+  const incomeSum    = filtered.filter(e=>e.type==="income").reduce((s,e)=>s+toNumber(e.amount),0);
+  const donationSum  = filtered.filter(e=>e.type==="donation").reduce((s,e)=>s+Math.max(0,toNumber(e.amount)),0);
+  els.filterSummary.textContent = `${filtered.length} רשומות`;
+  els.tableFooter.innerHTML = filtered.length
+    ? `<span>הכנסות: <strong>${formatCurrency(incomeSum)}</strong></span><span>תרומות: <strong>${formatCurrency(donationSum)}</strong></span><span>סה"כ תוצאות: ${filtered.length}</span>`
+    : `<span style="color:var(--muted)">לא נמצאו רשומות</span>`;
+
+  // Update sort indicators
+  els.tableHeaders.forEach(th => {
+    th.classList.remove("sorted-asc","sorted-desc");
+    if (th.dataset.sort === sortField) {
+      th.classList.add(sortDir === "asc" ? "sorted-asc" : "sorted-desc");
+    }
   });
 }
 
-function renderTopPanels() {
-  if (els.topPanelMain) {
-    els.topPanelMain.classList.toggle("hidden", activeTopTab !== "main");
-  }
-  if (els.topPanelImport) {
-    els.topPanelImport.classList.toggle("hidden", activeTopTab !== "import");
-  }
-  if (els.topTabMain) {
-    els.topTabMain.classList.toggle("active", activeTopTab === "main");
-  }
-  if (els.topTabImport) {
-    els.topTabImport.classList.toggle("active", activeTopTab === "import");
-  }
-  if (activeTopTab === "import" && !excelWorkbook) {
-    setImportStep(1);
-  }
+// ══════════════════════════════════════════════════════════
+//  FORM
+// ══════════════════════════════════════════════════════════
+function toggleRecipient() {
+  const isDonation = els.typeEl.value === "donation";
+  els.recipientWrap.style.display = isDonation ? "" : "none";
+  els.categoryWrap.style.display  = isDonation ? "" : "none";
 }
 
-function resetFormToCreateMode() {
-  els.editingId.value = "";
-  els.saveBtn.textContent = "שמור פעולה";
+function updateHebrewDatePreview() {
+  els.hebrewDate.value = toHebrewDate(els.dateEl.value);
+}
+
+function resetForm() {
+  els.editingId.value  = "";
+  els.saveBtn.textContent = "💾 שמור פעולה";
   els.cancelEditBtn.classList.add("hidden");
   els.form.reset();
-  els.date.value = new Date().toISOString().slice(0, 10);
+  els.dateEl.value = todayIso();
   updateHebrewDatePreview();
-  els.type.value = "income";
+  els.typeEl.value = "income";
   toggleRecipient();
 }
 
 function enterEditMode(id) {
-  const item = state.entries.find((x) => String(x.id) === String(id));
+  const item = state.entries.find(x => String(x.id) === String(id));
   if (!item) return;
-
-  els.editingId.value = String(item.id);
-  els.type.value = item.type;
-  els.date.value = item.date;
-  els.hebrewDate.value = toHebrewDate(item.date) || item.hebrewDate || "";
-  els.description.value = item.description;
-  els.amount.value = String(item.amount);
-  els.recipient.value = item.recipient || "";
-  els.notes.value = item.notes || "";
+  els.editingId.value    = String(item.id);
+  els.typeEl.value       = item.type;
+  els.dateEl.value       = item.date;
+  els.hebrewDate.value   = toHebrewDate(item.date)||item.hebrewDate||"";
+  els.description.value  = item.description;
+  els.amount.value       = String(item.amount);
+  els.recipient.value    = item.recipient||"";
+  els.category.value     = item.category||"";
+  els.notes.value        = item.notes||"";
   toggleRecipient();
-  els.saveBtn.textContent = "עדכן פעולה";
+  els.saveBtn.textContent = "✏️ עדכן פעולה";
   els.cancelEditBtn.classList.remove("hidden");
-}
-
-function upsertEntry(entry) {
-  const idx = state.entries.findIndex((x) => String(x.id) === String(entry.id));
-  if (idx === -1) {
-    state.entries.push(entry);
-  } else {
-    state.entries[idx] = entry;
-  }
+  // Scroll to form on mobile
+  document.getElementById("section-dashboard").scrollIntoView({behavior:"smooth"});
+  if (activeSection !== "dashboard") switchSection("dashboard");
 }
 
 function onSubmit(e) {
   e.preventDefault();
-  const type = els.type.value;
+  const type   = els.typeEl.value;
   const amount = toNumber(els.amount.value);
-
-  if (!els.date.value || !els.description.value.trim()) return;
-  if (type === "donation" && amount <= 0) {
-    alert("בתרומה יש להזין סכום חיובי גדול מאפס");
-    return;
-  }
-  if (type === "income" && amount === 0) {
-    alert("בהכנסה יש להזין סכום שונה מאפס (אפשר גם שלילי)");
-    return;
-  }
+  if (!els.dateEl.value || !els.description.value.trim()) { showToast("נא למלא תאריך ותיאור","error"); return; }
+  if (type === "donation" && amount <= 0) { showToast("תרומה חייבת להיות סכום חיובי","error"); return; }
+  if (type === "income"   && amount === 0) { showToast("הכנסה לא יכולה להיות אפס","error"); return; }
 
   const existingId = els.editingId.value;
-  const computedHebrewDate = toHebrewDate(els.date.value);
   const entry = {
-    id: existingId || `${Date.now()}-${Math.random()}`,
+    id         : existingId || `${Date.now()}-${Math.random()}`,
     type,
-    date: els.date.value,
+    date       : els.dateEl.value,
     description: els.description.value.trim(),
     amount,
-    recipient: type === "donation" ? (els.recipient.value || "").trim() : "",
-    notes: (els.notes.value || "").trim(),
-    hebrewDate: computedHebrewDate
+    recipient  : type === "donation" ? (els.recipient.value||"").trim() : "",
+    category   : type === "donation" ? (els.category.value||"") : "",
+    notes      : (els.notes.value||"").trim(),
+    hebrewDate : toHebrewDate(els.dateEl.value)
   };
 
-  pushHistorySnapshot();
-  upsertEntry(entry);
+  pushHistory();
+  const idx = state.entries.findIndex(x => String(x.id) === String(entry.id));
+  if (idx === -1) state.entries.push(entry);
+  else state.entries[idx] = entry;
+
   saveState();
-  resetFormToCreateMode();
+  resetForm();
   rerender();
+  showToast(existingId ? "✏️ הרשומה עודכנה" : "✅ הרשומה נשמרה","success");
 }
 
-function toggleRecipient() {
-  const donation = els.type.value === "donation";
-  els.recipientWrap.classList.toggle("hidden", !donation);
-  els.recipient.required = false;
-}
-
-function onRowActions(e) {
-  const target = e.target;
-  if (!(target instanceof HTMLElement)) return;
-  const action = target.dataset.action;
-  const id = target.dataset.id;
+function onRowAction(e) {
+  const btn = e.target.closest("[data-action]");
+  if (!btn) return;
+  const { action, id } = btn.dataset;
   if (!action || !id) return;
 
   if (action === "delete") {
-    pushHistorySnapshot();
-    state.entries = state.entries.filter((x) => String(x.id) !== String(id));
-    saveState();
-    rerender();
+    showModal("מחיקת רשומה","האם למחוק את הרשומה? לא ניתן לשחזר (אלא דרך בטל פעולה).", () => {
+      pushHistory();
+      state.entries = state.entries.filter(x => String(x.id) !== String(id));
+      saveState(); rerender();
+      showToast("🗑️ הרשומה נמחקה","info");
+    });
     return;
   }
-
-  if (action === "edit") {
-    enterEditMode(id);
-  }
+  if (action === "edit") enterEditMode(id);
 }
 
-function exportBackup() {
-  const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `backup_${new Date().toISOString().slice(0, 10)}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function exportBackupBeforeClear() {
-  const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  const stamp = new Date().toISOString().replace(/[:]/g, "-").slice(0, 19);
-  a.download = `backup_before_clear_${stamp}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function exportCsv() {
-  const header = ["type", "date", "hebrewDate", "description", "amount", "recipient", "notes"];
-  const lines = [header.join(",")];
-
-  for (const e of state.entries) {
-    const row = [e.type, e.date, toHebrewDate(e.date) || e.hebrewDate || "", e.description, String(e.amount), e.recipient || "", e.notes || ""].map((v) => {
-      const value = String(v).replaceAll('"', '""');
-      return `"${value}"`;
-    });
-    lines.push(row.join(","));
-  }
-
-  const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `entries_${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function exportXlsx() {
-  const rows = state.entries.map((e) => ({
-    type: e.type,
-    date: e.date,
-    hebrewDate: toHebrewDate(e.date) || e.hebrewDate || "",
-    description: e.description,
-    amount: e.amount,
-    recipient: e.recipient || "",
-    notes: e.notes || ""
-  }));
-
-  const ws = XLSX.utils.json_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "entries");
-  XLSX.writeFile(wb, `entries_${new Date().toISOString().slice(0, 10)}.xlsx`);
-}
-
-function normalizeBackup(raw) {
-  if (!raw || !Array.isArray(raw.entries)) {
-    throw new Error("קובץ גיבוי לא תקין");
-  }
-
-  return {
-    entries: raw.entries.map((e) => ({
-      id: e.id || `${Date.now()}-${Math.random()}`,
-      type: e.type === "donation" ? "donation" : "income",
-      date: toIsoDate(e.date) || new Date().toISOString().slice(0, 10),
-      description: String(e.description || ""),
-      amount: toNumber(e.amount),
-      recipient: String(e.recipient || ""),
-      notes: String(e.notes || ""),
-      hebrewDate: String(e.hebrewDate || toHebrewDate(toIsoDate(e.date)))
-    })),
-    version: raw.version || "4.0",
-    date: raw.date || new Date().toISOString()
-  };
-}
-
-async function importBackup(file) {
-  const text = await file.text();
-  const parsed = JSON.parse(text);
-  const normalized = normalizeBackup(parsed);
-
-  const byId = new Map(state.entries.map((e) => [String(e.id), e]));
-  pushHistorySnapshot();
-  for (const item of normalized.entries) {
-    byId.set(String(item.id), item);
-  }
-
-  state.entries = Array.from(byId.values());
-  state.version = normalized.version;
-  state.date = new Date().toISOString();
-  saveState();
-  rerender();
-}
-
+// ══════════════════════════════════════════════════════════
+//  REPORT CHART
+// ══════════════════════════════════════════════════════════
 function renderReportYearOptions() {
-  const yearSet = new Set(state.entries.map((e) => Number((e.date || "").slice(0, 4))).filter((n) => Number.isFinite(n)));
-  if (yearSet.size === 0) yearSet.add(new Date().getFullYear());
-  const years = Array.from(yearSet).sort((a, b) => b - a);
-
-  const current = els.reportYear.value;
-  els.reportYear.innerHTML = years.map((y) => `<option value="${y}">${y}</option>`).join("");
-  els.reportYear.value = current && years.includes(Number(current)) ? current : String(years[0]);
+  const years = Array.from(new Set(state.entries.map(e=>Number((e.date||"").slice(0,4))).filter(n=>n>1900))).sort((a,b)=>b-a);
+  if (!years.length) years.push(new Date().getFullYear());
+  const cur = els.reportYear.value;
+  els.reportYear.innerHTML = years.map(y=>`<option value="${y}">${y}</option>`).join("");
+  els.reportYear.value = cur && years.includes(Number(cur)) ? cur : String(years[0]);
 }
 
 function getReportData() {
@@ -898,289 +637,479 @@ function getReportData() {
   if (mode === "yearly") {
     const byYear = new Map();
     for (const e of state.entries) {
-      const y = Number((e.date || "").slice(0, 4));
-      if (!Number.isFinite(y)) continue;
-      const bucket = byYear.get(y) || { income: 0, donation: 0 };
-      if (e.type === "income") bucket.income += toNumber(e.amount);
-      if (e.type === "donation") bucket.donation += Math.max(0, toNumber(e.amount));
-      byYear.set(y, bucket);
+      const y = Number((e.date||"").slice(0,4));
+      if (!y) continue;
+      const b = byYear.get(y)||{income:0,donation:0};
+      if (e.type==="income")   b.income   += toNumber(e.amount);
+      if (e.type==="donation") b.donation += Math.max(0,toNumber(e.amount));
+      byYear.set(y,b);
     }
-    const labels = Array.from(byYear.keys()).sort((a, b) => a - b).map(String);
-    const income = labels.map((y) => byYear.get(Number(y)).income);
-    const donation = labels.map((y) => byYear.get(Number(y)).donation);
-    return { labels, income, donation };
+    const labels = Array.from(byYear.keys()).sort((a,b)=>a-b).map(String);
+    return { labels, income: labels.map(y=>byYear.get(Number(y)).income), donation: labels.map(y=>byYear.get(Number(y)).donation) };
   }
 
-  const labels = ["ינו", "פבר", "מרץ", "אפר", "מאי", "יונ", "יול", "אוג", "ספט", "אוק", "נוב", "דצמ"];
-  const income = new Array(12).fill(0);
+  const labels   = ["ינו","פבר","מרץ","אפר","מאי","יונ","יול","אוג","ספט","אוק","נוב","דצמ"];
+  const income   = new Array(12).fill(0);
   const donation = new Array(12).fill(0);
-
   for (const e of state.entries) {
-    const d = e.date || "";
-    const y = Number(d.slice(0, 4));
-    const m = Number(d.slice(5, 7)) - 1;
-    if (y !== year || m < 0 || m > 11) continue;
-    if (e.type === "income") income[m] += toNumber(e.amount);
-    if (e.type === "donation") donation[m] += Math.max(0, toNumber(e.amount));
+    const y = Number((e.date||"").slice(0,4));
+    const m = Number((e.date||"").slice(5,7)) - 1;
+    if (y!==year || m<0 || m>11) continue;
+    if (e.type==="income")   income[m]   += toNumber(e.amount);
+    if (e.type==="donation") donation[m] += Math.max(0,toNumber(e.amount));
   }
-
   return { labels, income, donation };
 }
 
-function renderReportChart() {
-  const data = getReportData();
-  if (reportChart) reportChart.destroy();
+function isDark() { return document.documentElement.dataset.theme === "dark"; }
 
-  reportChart = new Chart(els.reportChart, {
+function renderReportChart() {
+  if (!els.reportChartEl) return;
+  const data = getReportData();
+  const gridColor = isDark() ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)";
+  const tickColor = isDark() ? "#8899b4" : "#6b7280";
+
+  if (reportChart) reportChart.destroy();
+  reportChart = new Chart(els.reportChartEl, {
     type: "bar",
     data: {
       labels: data.labels,
       datasets: [
-        { label: "הכנסות", data: data.income, backgroundColor: "#1a73e8" },
-        { label: "תרומות", data: data.donation, backgroundColor: "#188038" }
+        { label:"הכנסות",  data:data.income,   backgroundColor:"rgba(9,132,227,0.75)",  borderRadius:5 },
+        { label:"תרומות",  data:data.donation, backgroundColor:"rgba(0,184,148,0.75)",  borderRadius:5 }
       ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: true,
-      aspectRatio: 3.8,
-      layout: {
-        padding: { top: 4, right: 8, bottom: 4, left: 8 }
-      },
-      plugins: { legend: { position: "top", rtl: true } },
-      scales: { y: { beginAtZero: true } }
-    }
-  });
-}
-
-function detectColumnsByHeaders(headers) {
-  // Patterns for common bank/financial Excel column names
-  const patterns = {
-    date: ['תאריך שעה', 'תאריך', 'date', 'יום', 'תאריך עסקה', 'ממועד', 'ממועד ערך', 'ערך'],
-    description: ['תיאור הרשומה', 'תיאור', 'description', 'פרטים', 'פירוט', 'מהות הפעולה', 'שם פעולה', 'שם בית עסק'],
-    amount: ['סכום', 'amount', 'זכות', 'חובה', 'חיוב', 'זיכוי', 'יתרה פעולה', 'סכום פעולה', 'value'],
-    notes: ['הערות', 'notes', 'הוספות', 'הערה', 'אסמכתא', 'פרטי עסקה'],
-    recipient: ['שם התאגיד', 'מקבל', 'recipient', 'beneficiary', 'למי', 'שם', 'בעל החשבון', 'מוטב']
-  };
-  
-  const result = {
-    date: null,
-    description: null,
-    amount: null,
-    notes: null,
-    recipient: null
-  };
-  
-  // Iterate through headers and match patterns
-  headers.forEach((header, index) => {
-    if (!header) return;
-    const normalized = String(header).trim().toLowerCase();
-    
-    for (const [field, keywords] of Object.entries(patterns)) {
-      if (result[field] !== null) continue; // Already found
-      
-      for (const keyword of keywords) {
-        if (normalized.includes(keyword.toLowerCase())) {
-          result[field] = index;
-          break;
-        }
+      plugins: { legend:{ position:"top", labels:{ color: tickColor } } },
+      scales: {
+        y: { beginAtZero:true, grid:{color:gridColor}, ticks:{color:tickColor,callback:v=>formatCurrency(v)} },
+        x: { grid:{display:false}, ticks:{color:tickColor} }
       }
     }
   });
-  
+}
+
+// ══════════════════════════════════════════════════════════
+//  CATEGORY CHART
+// ══════════════════════════════════════════════════════════
+const CAT_COLORS = ["#6c5ce7","#00b894","#0984e3","#fdcb6e","#e17055","#a29bfe","#fd79a8","#55efc4"];
+
+function renderCategoryChart() {
+  if (!els.categoryChartEl) return;
+  const donations = state.entries.filter(e=>e.type==="donation");
+  const byCategory = {};
+  for (const e of donations) {
+    const cat = e.category || "ללא קטגוריה";
+    byCategory[cat] = (byCategory[cat]||0) + Math.max(0,toNumber(e.amount));
+  }
+  const cats   = Object.keys(byCategory).sort((a,b)=>byCategory[b]-byCategory[a]);
+  const values = cats.map(c=>byCategory[c]);
+  const colors = cats.map((_,i)=>CAT_COLORS[i%CAT_COLORS.length]);
+  const tickColor = isDark() ? "#8899b4" : "#6b7280";
+
+  if (categoryChart) categoryChart.destroy();
+  if (!cats.length) {
+    els.categoryChartEl.getContext("2d").clearRect(0,0,els.categoryChartEl.width,els.categoryChartEl.height);
+    els.categoryLegend.innerHTML = '<span style="color:var(--muted);font-size:.85rem">אין נתוני תרומות</span>';
+    return;
+  }
+  categoryChart = new Chart(els.categoryChartEl, {
+    type:"doughnut",
+    data:{ labels:cats, datasets:[{ data:values, backgroundColor:colors, borderWidth:2, borderColor: isDark()?"#1a1f2e":"#fff" }] },
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${formatCurrency(ctx.raw)}`}}
+      }
+    }
+  });
+
+  els.categoryLegend.innerHTML = cats.map((c,i)=>
+    `<div class="legend-item"><span class="legend-dot" style="background:${colors[i]}"></span><span>${c}: ${formatCurrency(values[i])}</span></div>`
+  ).join("");
+}
+
+// ══════════════════════════════════════════════════════════
+//  STATS
+// ══════════════════════════════════════════════════════════
+function renderStats() {
+  const incomes   = state.entries.filter(e=>e.type==="income");
+  const donations = state.entries.filter(e=>e.type==="donation");
+  const totalInc  = incomes.reduce((s,e)=>s+toNumber(e.amount),0);
+  const totalDon  = donations.reduce((s,e)=>s+Math.max(0,toNumber(e.amount)),0);
+  const avgInc    = incomes.length  ? totalInc/incomes.length : 0;
+  const avgDon    = donations.length ? totalDon/donations.length : 0;
+  const s         = calcSummary(state.entries);
+  const donPct    = totalInc > 0 ? (totalDon/totalInc*100).toFixed(1) : 0;
+
+  const rows = [
+    ["סה\"כ הכנסות",       formatCurrency(totalInc)],
+    ["סה\"כ תרומות",       formatCurrency(totalDon)],
+    ["ממוצע הכנסה",        formatCurrency(avgInc)],
+    ["ממוצע תרומה",        formatCurrency(avgDon)],
+    ["% תרומות מהכנסות",  `${donPct}%`],
+    ["מספר רשומות",        String(state.entries.length)],
+    ["חובת מעשר (10%)",    formatCurrency(s.maaser)],
+    ["נותר למעשר",         formatCurrency(s.remMaaser)],
+    ["חובת חומש (20%)",    formatCurrency(s.chomesh)],
+    ["נותר לחומש",         formatCurrency(s.remChomesh)],
+  ];
+
+  els.statsList.innerHTML = rows.map(([label,val])=>
+    `<div class="stats-row"><span class="stats-label">${label}</span><span class="stats-val">${val}</span></div>`
+  ).join("");
+}
+
+// ══════════════════════════════════════════════════════════
+//  YEARLY SUMMARY
+// ══════════════════════════════════════════════════════════
+function renderYearlySummary() {
+  const byYear = new Map();
+  for (const e of state.entries) {
+    const y = Number((e.date||"").slice(0,4));
+    if (!y) continue;
+    const b = byYear.get(y)||{income:0,donation:0};
+    if (e.type==="income")   b.income   += toNumber(e.amount);
+    if (e.type==="donation") b.donation += Math.max(0,toNumber(e.amount));
+    byYear.set(y,b);
+  }
+  if (!byYear.size) { els.yearlySummary.innerHTML = '<p style="color:var(--muted);font-size:.85rem">אין נתונים</p>'; return; }
+
+  const years = Array.from(byYear.keys()).sort((a,b)=>b-a);
+  els.yearlySummary.innerHTML = `
+    <table>
+      <thead><tr><th>שנה</th><th>הכנסות</th><th>תרומות</th><th>מעשר חובה</th><th>יתרה</th></tr></thead>
+      <tbody>${years.map(y=>{
+        const b=byYear.get(y);
+        const maaser = b.income*0.1;
+        const rem    = Math.max(0,maaser-b.donation);
+        return `<tr>
+          <td><strong>${y}</strong></td>
+          <td>${formatCurrency(b.income)}</td>
+          <td>${formatCurrency(b.donation)}</td>
+          <td>${formatCurrency(maaser)}</td>
+          <td style="color:${rem>0?'var(--red)':'var(--green)'}">${rem>0?formatCurrency(rem):'✅ הושלם'}</td>
+        </tr>`;
+      }).join("")}</tbody>
+    </table>`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  EXPORT / IMPORT
+// ══════════════════════════════════════════════════════════
+function exportBackup() {
+  const blob = new Blob([JSON.stringify(state,null,2)], {type:"application/json"});
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement("a"),{href:url,download:`backup_${todayIso()}.json`});
+  a.click(); URL.revokeObjectURL(url);
+  showToast("💾 גיבוי הורד","success");
+}
+
+function exportBackupBeforeClear() {
+  const blob = new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const url  = URL.createObjectURL(blob);
+  const stamp= new Date().toISOString().replace(/[:]/g,"-").slice(0,19);
+  const a    = Object.assign(document.createElement("a"),{href:url,download:`backup_before_clear_${stamp}.json`});
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function exportCsv() {
+  const header = ["type","date","hebrewDate","description","amount","category","recipient","notes"];
+  const lines  = [header.join(",")];
+  for (const e of state.entries) {
+    const row = [e.type,e.date,toHebrewDate(e.date)||e.hebrewDate||"",e.description,e.amount,e.category||"",e.recipient||"",e.notes||""]
+      .map(v=>'"'+String(v).replaceAll('"','""')+'"');
+    lines.push(row.join(","));
+  }
+  const blob = new Blob(["\ufeff"+lines.join("\n")],{type:"text/csv;charset=utf-8;"});
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement("a"),{href:url,download:`entries_${todayIso()}.csv`});
+  a.click(); URL.revokeObjectURL(url);
+  showToast("📄 CSV הורד","success");
+}
+
+function exportXlsx() {
+  const rows = state.entries.map(e=>({
+    type:e.type, date:e.date, hebrewDate:toHebrewDate(e.date)||e.hebrewDate||"",
+    description:e.description, amount:e.amount, category:e.category||"",
+    recipient:e.recipient||"", notes:e.notes||""
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"entries");
+  XLSX.writeFile(wb,`entries_${todayIso()}.xlsx`);
+  showToast("📊 XLSX הורד","success");
+}
+
+async function importBackup(file) {
+  const text   = await file.text();
+  const parsed = JSON.parse(text);
+  if (!parsed||!Array.isArray(parsed.entries)) throw new Error("קובץ לא תקין");
+  const normalized = {
+    entries: parsed.entries.map(normalizeEntry),
+    version: parsed.version||"5.0",
+    date   : parsed.date||nowIso()
+  };
+  const byId = new Map(state.entries.map(e=>[String(e.id),e]));
+  pushHistory();
+  normalized.entries.forEach(item=>byId.set(String(item.id),item));
+  state.entries = Array.from(byId.values());
+  state.version = normalized.version;
+  state.date    = nowIso();
+  saveState(); rerender();
+  showToast(`📂 יובאו ${normalized.entries.length} רשומות`,"success");
+}
+
+// ══════════════════════════════════════════════════════════
+//  PROFILES
+// ══════════════════════════════════════════════════════════
+function loadProfiles() {
+  try { importProfiles = JSON.parse(localStorage.getItem(PROFILES_KEY)||"{}") || {}; } catch { importProfiles={}; }
+}
+function loadProfileSettings() {
+  try {
+    const p = JSON.parse(localStorage.getItem(PROF_SETTINGS_KEY)||"{}");
+    profileSettings.defaultProfile  = p.defaultProfile||"";
+    profileSettings.autoProfileMode = p.autoProfileMode==="off"?"off":"on";
+  } catch {}
+}
+function saveProfiles()        { localStorage.setItem(PROFILES_KEY,JSON.stringify(importProfiles)); }
+function saveProfileSettings() { localStorage.setItem(PROF_SETTINGS_KEY,JSON.stringify(profileSettings)); }
+
+function renderProfileOptions() {
+  const names = Object.keys(importProfiles).sort((a,b)=>a.localeCompare(b,"he"));
+  els.profileSelect.innerHTML = ['<option value="">בחר תבנית...</option>'].concat(names.map(n=>`<option value="${n}">${n}</option>`)).join("");
+  els.autoProfileMode.value = profileSettings.autoProfileMode;
+}
+
+function getCurrentMappingModel() {
+  return {
+    excelType:els.excelType.value, excelAmountMode:els.excelAmountMode.value,
+    excelHasHeader:els.excelHasHeader.value,
+    mapDescription:els.mapDescription.value, mapAmount:els.mapAmount.value,
+    mapDate:els.mapDate.value, mapNotes:els.mapNotes.value, mapRecipient:els.mapRecipient.value
+  };
+}
+
+function applyMappingModel(model) {
+  if (!model) return;
+  els.excelType.value       = model.excelType       || els.excelType.value;
+  els.excelAmountMode.value = model.excelAmountMode || els.excelAmountMode.value;
+  els.excelHasHeader.value  = model.excelHasHeader  || els.excelHasHeader.value;
+  els.mapDescription.value  = model.mapDescription  ?? els.mapDescription.value;
+  els.mapAmount.value       = model.mapAmount        ?? els.mapAmount.value;
+  els.mapDate.value         = model.mapDate          ?? els.mapDate.value;
+  els.mapNotes.value        = model.mapNotes         ?? els.mapNotes.value;
+  els.mapRecipient.value    = model.mapRecipient     ?? els.mapRecipient.value;
+  renderExcelPreview(); renderParsedExcelPreview();
+}
+
+function findProfileByFileName(fileName) {
+  const lower = (fileName||"").toLowerCase();
+  for (const name of Object.keys(importProfiles)) {
+    const tokens = name.toLowerCase().split(/[\s\-_]+/).filter(t=>t.length>=3);
+    if (tokens.some(t=>lower.includes(t))) return name;
+  }
+  return "";
+}
+
+function applyBestProfileForCurrentFile() {
+  if (profileSettings.autoProfileMode==="off") return;
+  let name = findProfileByFileName(excelFileName);
+  if (!name && profileSettings.defaultProfile && importProfiles[profileSettings.defaultProfile])
+    name = profileSettings.defaultProfile;
+  if (!name) return;
+  applyMappingModel(importProfiles[name]);
+  els.profileSelect.value = name;
+  els.profileName.value   = name;
+}
+
+function saveCurrentProfile() {
+  const name = (els.profileName.value||"").trim();
+  if (!name) { showToast("יש להזין שם תבנית","error"); return; }
+  importProfiles[name] = getCurrentMappingModel();
+  saveProfiles(); renderProfileOptions();
+  els.profileSelect.value = name;
+  showToast(`💾 תבנית "${name}" נשמרה`,"success");
+}
+
+function loadSelectedProfile() {
+  const name = els.profileSelect.value;
+  if (!name||!importProfiles[name]) { showToast("לא נבחרה תבנית","error"); return; }
+  applyMappingModel(importProfiles[name]);
+  els.profileName.value = name;
+  showToast(`תבנית "${name}" נטענה`,"success");
+}
+
+function deleteSelectedProfile() {
+  const name = els.profileSelect.value;
+  if (!name||!importProfiles[name]) { showToast("לא נבחרה תבנית למחיקה","error"); return; }
+  delete importProfiles[name];
+  if (profileSettings.defaultProfile===name) { profileSettings.defaultProfile=""; saveProfileSettings(); }
+  saveProfiles(); renderProfileOptions();
+  els.profileName.value="";
+  showToast("תבנית נמחקה","info");
+}
+
+function setDefaultProfile() {
+  const name = els.profileSelect.value;
+  if (!name||!importProfiles[name]) { showToast("בחר תבנית קודם","error"); return; }
+  profileSettings.defaultProfile = name;
+  saveProfileSettings();
+  showToast(`⭐ "${name}" הוגדרה כברירת מחדל`,"success");
+}
+
+function clearDefaultProfile() {
+  profileSettings.defaultProfile="";
+  saveProfileSettings();
+  showToast("ברירת המחדל נוקתה","info");
+}
+
+function exportProfilesJson() {
+  const payload = { version:"1.0", exportedAt:nowIso(), settings:profileSettings, profiles:importProfiles };
+  const blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement("a"),{href:url,download:`import_profiles_${todayIso()}.json`});
+  a.click(); URL.revokeObjectURL(url);
+  showToast("תבניות יוצאו","success");
+}
+
+async function importProfilesJson(file) {
+  const text   = await file.text();
+  const parsed = JSON.parse(text);
+  if (!parsed||typeof parsed.profiles!=="object") throw new Error("קובץ תבניות לא תקין");
+  importProfiles = {...importProfiles,...parsed.profiles};
+  if (parsed.settings) {
+    profileSettings.defaultProfile  = parsed.settings.defaultProfile||profileSettings.defaultProfile;
+    profileSettings.autoProfileMode = parsed.settings.autoProfileMode==="off"?"off":profileSettings.autoProfileMode;
+  }
+  saveProfiles(); saveProfileSettings(); renderProfileOptions();
+  showToast("תבניות יובאו","success");
+}
+
+// ══════════════════════════════════════════════════════════
+//  IMPORT STEPS UI
+// ══════════════════════════════════════════════════════════
+function setImportStep(step) {
+  const s = Math.max(1,Math.min(4,Number(step)||1));
+  els.importSteps.forEach(el => { el.classList.toggle("active", Number(el.dataset.step)===s); });
+}
+
+// ══════════════════════════════════════════════════════════
+//  EXCEL IMPORT
+// ══════════════════════════════════════════════════════════
+function detectColumnsByHeaders(headers) {
+  const patterns = {
+    date:       ["תאריך שעה","תאריך","date","יום","תאריך עסקה","ממועד","ערך"],
+    description:["תיאור הרשומה","תיאור","description","פרטים","פירוט","מהות הפעולה","שם פעולה","שם בית עסק"],
+    amount:     ["סכום","amount","זכות","חובה","חיוב","זיכוי","יתרה פעולה","סכום פעולה","value"],
+    notes:      ["הערות","notes","הוספות","הערה","אסמכתא","פרטי עסקה"],
+    recipient:  ["שם התאגיד","מקבל","recipient","beneficiary","למי","שם","מוטב"]
+  };
+  const result = { date:null, description:null, amount:null, notes:null, recipient:null };
+  headers.forEach((h,i) => {
+    if (!h) return;
+    const n = String(h).trim().toLowerCase();
+    for (const [field,kws] of Object.entries(patterns)) {
+      if (result[field]!==null) continue;
+      if (kws.some(k=>n.includes(k.toLowerCase()))) result[field]=i;
+    }
+  });
   return result;
 }
 
-function detectBestHeaderRow(maxScanRows = 30) {
+function detectBestHeaderRow(maxScan=30) {
   if (!excelRows.length) return 0;
-  const scanLimit = Math.min(maxScanRows, excelRows.length);
-
-  let bestRow = 0;
-  let bestScore = -1;
-
-  for (let i = 0; i < scanLimit; i += 1) {
-    const row = excelRows[i] || [];
-    const headers = row.map((h, idx) => (h == null || h === "" ? `טור ${idx + 1}` : String(h)));
-    const detected = detectColumnsByHeaders(headers);
+  let bestRow=0, bestScore=-1;
+  const limit = Math.min(maxScan,excelRows.length);
+  for (let i=0;i<limit;i++) {
+    const row = excelRows[i]||[];
+    const headers = row.map((h,j)=>h==null||h===""?`טור ${j+1}`:String(h));
+    const d = detectColumnsByHeaders(headers);
     let score = 0;
-    if (detected.date !== null) score += 2;
-    if (detected.amount !== null) score += 3;
-    if (detected.description !== null) score += 3;
-    if (detected.notes !== null) score += 1;
-    if (detected.recipient !== null) score += 1;
-
-    if (score > bestScore) {
-      bestScore = score;
-      bestRow = i;
-    }
+    if (d.date!==null)        score+=2;
+    if (d.amount!==null)      score+=3;
+    if (d.description!==null) score+=3;
+    if (d.notes!==null)       score+=1;
+    if (d.recipient!==null)   score+=1;
+    if (score>bestScore) { bestScore=score; bestRow=i; }
   }
-
-  return bestScore >= 5 ? bestRow : 0;
+  return bestScore>=5 ? bestRow : 0;
 }
 
 function autoMapColumns() {
-  if (!excelRows.length) return;
-  
-  const hasHeader = els.excelHasHeader.value === "yes";
-  if (!hasHeader) return; // Can't auto-detect without headers
-  
-  const startRow = Math.max(0, Number(els.excelStartRow.value) - 1) || 0;
-  const headerRow = excelRows[startRow] || [];
-  const headers = headerRow.map((h, i) => h || `טור ${i + 1}`);
-  
-  const detected = detectColumnsByHeaders(headers);
-  
-  // Apply detected mappings
-  if (detected.description !== null) els.mapDescription.value = detected.description;
-  if (detected.amount !== null) els.mapAmount.value = detected.amount;
-  if (detected.date !== null) els.mapDate.value = detected.date;
-  if (detected.notes !== null) els.mapNotes.value = detected.notes;
-  if (detected.recipient !== null) els.mapRecipient.value = detected.recipient;
-  
+  if (!excelRows.length||els.excelHasHeader.value!=="yes") return;
+  const startRow = Math.max(0,Number(els.excelStartRow.value)-1)||0;
+  const headers  = (excelRows[startRow]||[]).map((h,i)=>h||`טור ${i+1}`);
+  const d = detectColumnsByHeaders(headers);
+  if (d.description!==null) els.mapDescription.value = d.description;
+  if (d.amount!==null)      els.mapAmount.value      = d.amount;
+  if (d.date!==null)        els.mapDate.value        = d.date;
+  if (d.notes!==null)       els.mapNotes.value       = d.notes;
+  if (d.recipient!==null)   els.mapRecipient.value   = d.recipient;
   renderParsedExcelPreview();
 }
 
-function getAmountByMode(rawAmount, type, mode) {
-  const amount = toNumber(rawAmount);
-  if (mode === "as-is") return amount;
-  if (mode === "abs") return Math.abs(amount);
-  if (mode === "flip") return amount * -1;
-
-  // auto mode: bank files are often +/- mixed. Keep income as-is,
-  // and make donations positive to simplify credit-card donation imports.
-  if (type === "donation") return Math.abs(amount);
-  return amount;
-}
-
-function renderExcelPreview() {
-  if (!excelRows.length) {
-    els.excelRawPreview.innerHTML = "";
-    els.excelRawPreview.style.display = "none";
-    return;
-  }
-
-  const hasHeader = els.excelHasHeader.value === "yes";
-  const startRow = Math.max(0, Number(els.excelStartRow.value) - 1) || 0;
-  const headerRow = hasHeader ? excelRows[startRow] : excelRows[startRow].map((_x, i) => `טור ${i + 1}`);
-  const headers = headerRow.map((h, i) => h || `טור ${i + 1}`);
-  const bodyStart = hasHeader ? startRow + 1 : startRow;
-  const bodyRows = excelRows.slice(bodyStart);
-  const q = (els.excelImportSearch.value || "").trim().toLowerCase();
-  const indexedRows = bodyRows.map((row, idx) => ({ row, index1: idx + 1 }));
-  const filteredRows = q
-    ? indexedRows.filter(({ row }) => row.some((c) => String(c == null ? "" : c).toLowerCase().includes(q)))
-    : indexedRows;
-
-  const showCheckboxes = els.excelRowMode.value === "selected";
-  
-  const rowsHtml = filteredRows
-    .map(({ row, index1 }) => {
-      const isChecked = manualSelectedRows.has(index1);
-      const checkbox = showCheckboxes ? `<td><input class="row-check" type="checkbox" data-row="${index1}" ${isChecked ? "checked" : ""} /></td>` : "";
-      const tds = row.map((c) => `<td>${c == null ? "" : String(c)}</td>`).join("");
-      return `<tr>${checkbox}<td style="text-align:center;color:#999;">${startRow + 1 + index1}</td>${tds}</tr>`;
-    })
-    .slice(0, 100)
-    .join("");
-
-  const visibleSelectedCount = filteredRows.filter(({ index1 }) => manualSelectedRows.has(index1)).length;
-  const allVisibleSelected = filteredRows.length > 0 && visibleSelectedCount === filteredRows.length;
-  const headerCheckbox = showCheckboxes
-    ? `<th><input id="row-check-all" type="checkbox" ${allVisibleSelected ? "checked" : ""} title="בחר/בטל הכל" /></th>`
-    : "";
-  els.excelRawPreview.innerHTML = `
-    <h4>תצוגה גולמית (${q ? "מסונן" : "כללי"}, עד 100 שורות)</h4>
-    <table style="font-size:0.85rem;">
-      <thead><tr>${headerCheckbox}<th>#</th>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead>
-      <tbody>${rowsHtml}</tbody>
-    </table>
-  `;
-  els.excelRawPreview.style.display = "block";
-  
-  // Re-run parsed preview when checkboxes change
-  if (showCheckboxes) {
-    const checks = Array.from(els.excelRawPreview.querySelectorAll(".row-check"));
-    checks.forEach((check) => {
-      check.addEventListener("change", () => {
-        const rowNum = Number(check.dataset.row);
-        if (check.checked) manualSelectedRows.add(rowNum);
-        else manualSelectedRows.delete(rowNum);
-        renderExcelPreview();
-        renderParsedExcelPreview();
-      });
-    });
-
-    const master = els.excelRawPreview.querySelector("#row-check-all");
-    if (master) {
-      master.addEventListener("change", () => {
-        filteredRows.forEach(({ index1 }) => {
-          if (master.checked) manualSelectedRows.add(index1);
-          else manualSelectedRows.delete(index1);
-        });
-        renderExcelPreview();
-        renderParsedExcelPreview();
-      });
-    }
-  }
+function getAmountByMode(raw, type, mode) {
+  const n = toNumber(raw);
+  if (mode==="as-is") return n;
+  if (mode==="abs")   return Math.abs(n);
+  if (mode==="flip")  return n*-1;
+  return type==="donation" ? Math.abs(n) : n;
 }
 
 function getExcelHeaders() {
   if (!excelRows.length) return [];
-  const startRow = Math.max(0, Number(els.excelStartRow.value) - 1) || 0;
-  const hasHeader = els.excelHasHeader.value === "yes";
-  const firstRow = excelRows[startRow] || [];
-  if (hasHeader) return firstRow.map((h, i) => h || `טור ${i + 1}`);
-  return firstRow.map((_h, i) => `טור ${i + 1}`);
+  const startRow = Math.max(0,Number(els.excelStartRow.value)-1)||0;
+  const row = excelRows[startRow]||[];
+  return els.excelHasHeader.value==="yes"
+    ? row.map((h,i)=>h||`טור ${i+1}`)
+    : row.map((_,i)=>`טור ${i+1}`);
 }
 
-function updateMappingOptionsFromSelectedRow() {
+function updateMappingOptions() {
   if (!excelRows.length) return;
-  const startRow = Math.max(0, Number(els.excelStartRow.value) - 1) || 0;
-  const selectedRow = excelRows[startRow] || [];
-
+  const startRow = Math.max(0,Number(els.excelStartRow.value)-1)||0;
+  const row = excelRows[startRow]||[];
   const options = ['<option value="">לא נבחר</option>']
-    .concat(selectedRow.map((cell, i) => {
-      const text = String(cell == null ? "" : cell).trim();
-      const label = text || `(ריק) טור ${i + 1}`;
-      return `<option value="${i}">${label}</option>`;
-    }))
-    .join("");
-
-  [els.mapDescription, els.mapAmount, els.mapDate, els.mapNotes, els.mapRecipient].forEach((sel) => {
-    const prev = sel.value;
-    sel.innerHTML = options;
-    if (prev !== "" && selectedRow[Number(prev)] !== undefined) {
-      sel.value = prev;
-    }
+    .concat(row.map((c,i)=>{
+      const t = String(c==null?"":c).trim();
+      return `<option value="${i}">${t||`(ריק) טור ${i+1}`}</option>`;
+    })).join("");
+  [els.mapDescription,els.mapAmount,els.mapDate,els.mapNotes,els.mapRecipient].forEach(s=>{
+    const prev = s.value;
+    s.innerHTML = options;
+    if (prev!==""&&row[Number(prev)]!==undefined) s.value=prev;
   });
 }
 
 async function onExcelFileChosen(file) {
-  excelFileName = file.name || "";
+  excelFileName = file.name||"";
   const buf = await file.arrayBuffer();
-  excelWorkbook = XLSX.read(buf, { type: "array" });
-  els.excelSheet.innerHTML = excelWorkbook.SheetNames.map((name) => `<option value="${name}">${name}</option>`).join("");
+  excelWorkbook = XLSX.read(buf,{type:"array"});
+  els.excelSheet.innerHTML = excelWorkbook.SheetNames.map(n=>`<option value="${n}">${n}</option>`).join("");
   setImportStep(2);
   loadSelectedSheetRows();
   applyBestProfileForCurrentFile();
-  showNotice(`הקובץ נטען: ${excelFileName}`, "success");
+  showToast(`📂 נטען: ${excelFileName}`,"success");
+  els.uploadZone.querySelector(".upload-text").textContent = `✅ ${excelFileName}`;
 }
 
 function loadSelectedSheetRows() {
   if (!excelWorkbook) return;
-  const name = els.excelSheet.value || excelWorkbook.SheetNames[0];
-  const ws = excelWorkbook.Sheets[name];
-  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: "" });
+  const name = els.excelSheet.value||excelWorkbook.SheetNames[0];
+  const ws   = excelWorkbook.Sheets[name];
+  const rows = XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:""});
   if (!rows.length) throw new Error("empty");
-
   excelRows = rows;
-
   const bestHeaderRow = detectBestHeaderRow(40);
   els.excelHasHeader.value = "yes";
-  els.excelStartRow.value = String(bestHeaderRow + 1);
-  manualSelectedRows = new Set(excelRows.slice(bestHeaderRow + 1).map((_row, idx) => idx + 1));
-
-  updateMappingOptionsFromSelectedRow();
+  els.excelStartRow.value  = String(bestHeaderRow+1);
+  manualSelectedRows = new Set(excelRows.slice(bestHeaderRow+1).map((_,i)=>i+1));
+  updateMappingOptions();
   autoMapColumns();
   renderExcelPreview();
   renderParsedExcelPreview();
@@ -1190,405 +1119,401 @@ function loadSelectedSheetRows() {
 }
 
 function getCurrentFilteredBodyIndexSet() {
-  const hasHeader = els.excelHasHeader.value === "yes";
-  const startRow = Math.max(0, Number(els.excelStartRow.value) - 1) || 0;
-  const bodyStart = hasHeader ? startRow + 1 : startRow;
-  const bodyRows = excelRows.slice(bodyStart);
-  const q = (els.excelImportSearch.value || "").trim().toLowerCase();
-  const indexedRows = bodyRows.map((row, idx) => ({ row, index1: idx + 1 }));
-  const filteredRows = q
-    ? indexedRows.filter(({ row }) => row.some((c) => String(c == null ? "" : c).toLowerCase().includes(q)))
-    : indexedRows;
-  return new Set(filteredRows.map((x) => x.index1));
+  const hasHeader = els.excelHasHeader.value==="yes";
+  const startRow  = Math.max(0,Number(els.excelStartRow.value)-1)||0;
+  const bodyStart = hasHeader ? startRow+1 : startRow;
+  const bodyRows  = excelRows.slice(bodyStart);
+  const q = (els.excelImportSearch.value||"").trim().toLowerCase();
+  const indexed = bodyRows.map((row,idx)=>({row,index1:idx+1}));
+  const filtered = q ? indexed.filter(({row})=>row.some(c=>String(c==null?"":c).toLowerCase().includes(q))) : indexed;
+  return new Set(filtered.map(x=>x.index1));
 }
 
 function collectRowsForImport() {
-  const mode = els.excelRowMode.value;
-  const hasHeader = els.excelHasHeader.value === "yes";
-  const startRow = Math.max(0, Number(els.excelStartRow.value) - 1) || 0;
-  const bodyStart = hasHeader ? startRow + 1 : startRow;
-  const allRows = excelRows.slice(bodyStart);
-
-  const visibleSet = getCurrentFilteredBodyIndexSet();
-  if (mode === "all") {
-    return allRows.filter((_row, idx) => visibleSet.has(idx + 1));
-  }
-
-  return allRows.filter((_row, idx) => {
-    const index1 = idx + 1;
-    return visibleSet.has(index1) && manualSelectedRows.has(index1);
-  });
+  const mode      = els.excelRowMode.value;
+  const hasHeader = els.excelHasHeader.value==="yes";
+  const startRow  = Math.max(0,Number(els.excelStartRow.value)-1)||0;
+  const bodyStart = hasHeader ? startRow+1 : startRow;
+  const allRows   = excelRows.slice(bodyStart);
+  const visible   = getCurrentFilteredBodyIndexSet();
+  if (mode==="all") return allRows.filter((_,i)=>visible.has(i+1));
+  return allRows.filter((_,i)=>visible.has(i+1)&&manualSelectedRows.has(i+1));
 }
 
 function setAllRowChecks(checked) {
-  const visibleSet = getCurrentFilteredBodyIndexSet();
-  visibleSet.forEach((idx) => {
-    if (checked) manualSelectedRows.add(idx);
-    else manualSelectedRows.delete(idx);
-  });
-  renderExcelPreview();
-  renderParsedExcelPreview();
+  getCurrentFilteredBodyIndexSet().forEach(i=>{ if(checked) manualSelectedRows.add(i); else manualSelectedRows.delete(i); });
+  renderExcelPreview(); renderParsedExcelPreview();
 }
 
 function updateSelectedRowsCounter() {
-  if (!els.selectedRowsCounter) return;
-  const hasHeader = els.excelHasHeader.value === "yes";
-  const startRow = Math.max(0, Number(els.excelStartRow.value) - 1) || 0;
-  const bodyStart = hasHeader ? startRow + 1 : startRow;
-  const totalRows = Math.max(0, excelRows.slice(bodyStart).length);
-  const visibleSet = getCurrentFilteredBodyIndexSet();
+  const hasHeader = els.excelHasHeader.value==="yes";
+  const startRow  = Math.max(0,Number(els.excelStartRow.value)-1)||0;
+  const bodyStart = hasHeader ? startRow+1 : startRow;
+  const total     = Math.max(0,excelRows.slice(bodyStart).length);
+  const visible   = getCurrentFilteredBodyIndexSet();
+  const selected  = els.excelRowMode.value==="all" ? visible.size
+    : Array.from(visible).filter(i=>manualSelectedRows.has(i)).length;
+  els.selectedRowsCounter.textContent = `נבחרו ${selected} מתוך ${total} שורות`;
+}
 
-  let selectedCount;
-  if (els.excelRowMode.value === "all") {
-    selectedCount = visibleSet.size;
-  } else {
-    selectedCount = Array.from(visibleSet).filter((idx) => manualSelectedRows.has(idx)).length;
+function renderExcelPreview() {
+  if (!excelRows.length) { els.excelRawPreview.style.display="none"; return; }
+  const hasHeader = els.excelHasHeader.value==="yes";
+  const startRow  = Math.max(0,Number(els.excelStartRow.value)-1)||0;
+  const headerRow = hasHeader ? excelRows[startRow] : excelRows[startRow].map((_,i)=>`טור ${i+1}`);
+  const headers   = headerRow.map((h,i)=>h||`טור ${i+1}`);
+  const bodyStart = hasHeader ? startRow+1 : startRow;
+  const bodyRows  = excelRows.slice(bodyStart);
+  const q         = (els.excelImportSearch.value||"").trim().toLowerCase();
+  const indexed   = bodyRows.map((row,i)=>({row,index1:i+1}));
+  const filtered  = q ? indexed.filter(({row})=>row.some(c=>String(c==null?"":c).toLowerCase().includes(q))) : indexed;
+  const showChk   = els.excelRowMode.value==="selected";
+
+  const allVisSel = filtered.length>0 && filtered.every(({index1})=>manualSelectedRows.has(index1));
+  const hdrChk    = showChk ? `<th><input id="row-check-all" type="checkbox" ${allVisSel?"checked":""}/></th>` : "";
+
+  const rowsHtml = filtered.slice(0,100).map(({row,index1})=>{
+    const chk   = showChk ? `<td><input class="row-check" type="checkbox" data-row="${index1}" ${manualSelectedRows.has(index1)?"checked":""}/></td>` : "";
+    const tds   = row.map(c=>`<td>${c==null?"":String(c)}</td>`).join("");
+    return `<tr>${chk}<td style="text-align:center;color:var(--muted)">${startRow+1+index1}</td>${tds}</tr>`;
+  }).join("");
+
+  els.excelRawPreview.innerHTML = `
+    <h4>תצוגה גולמית${q?" (מסונן)":""} — עד 100 שורות</h4>
+    <div style="overflow-x:auto;"><table>
+      <thead><tr>${hdrChk}<th>#</th>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table></div>`;
+  els.excelRawPreview.style.display="block";
+
+  if (showChk) {
+    els.excelRawPreview.querySelectorAll(".row-check").forEach(chk=>{
+      chk.addEventListener("change",()=>{
+        const r = Number(chk.dataset.row);
+        if (chk.checked) manualSelectedRows.add(r); else manualSelectedRows.delete(r);
+        renderExcelPreview(); renderParsedExcelPreview();
+      });
+    });
+    const master = els.excelRawPreview.querySelector("#row-check-all");
+    if (master) {
+      master.addEventListener("change",()=>{
+        filtered.forEach(({index1})=>{ if(master.checked) manualSelectedRows.add(index1); else manualSelectedRows.delete(index1); });
+        renderExcelPreview(); renderParsedExcelPreview();
+      });
+    }
   }
-
-  els.selectedRowsCounter.textContent = `נבחרו ${selectedCount} מתוך ${totalRows} שורות`;
 }
 
 function parseImportedEntries() {
-  const rows = collectRowsForImport();
-  const type = els.excelType.value;
-  const fixedDate = els.excelFixedDate.value;
-  const amountMode = els.excelAmountMode.value;
-  const idx = {
+  const rows  = collectRowsForImport();
+  const type  = els.excelType.value;
+  const fixed = els.excelFixedDate.value;
+  const mode  = els.excelAmountMode.value;
+  const idx   = {
     description: Number(els.mapDescription.value),
-    amount: Number(els.mapAmount.value),
-    date: els.mapDate.value === "" ? null : Number(els.mapDate.value),
-    notes: els.mapNotes.value === "" ? null : Number(els.mapNotes.value),
-    recipient: els.mapRecipient.value === "" ? null : Number(els.mapRecipient.value)
+    amount     : Number(els.mapAmount.value),
+    date       : els.mapDate.value===""   ? null : Number(els.mapDate.value),
+    notes      : els.mapNotes.value===""  ? null : Number(els.mapNotes.value),
+    recipient  : els.mapRecipient.value==="" ? null : Number(els.mapRecipient.value)
   };
-
-  if (!Number.isFinite(idx.description) || !Number.isFinite(idx.amount)) {
-    throw new Error("יש לבחור לפחות טור תיאור וטור סכום");
-  }
+  if (!Number.isFinite(idx.description)||!Number.isFinite(idx.amount))
+    throw new Error("יש לבחור טור תיאור וטור סכום");
 
   const imported = [];
   for (const row of rows) {
-    const amount = getAmountByMode(row[idx.amount], type, amountMode);
-    const description = String(row[idx.description] || "").trim();
+    const amount = getAmountByMode(row[idx.amount], type, mode);
+    const description = String(row[idx.description]||"").trim();
     if (!description) continue;
-
-    if (type === "donation" && amount <= 0) continue;
-    if (type === "income" && amount === 0) continue;
-
-    const resolvedDate = fixedDate || toIsoDate(idx.date == null ? "" : row[idx.date]) || new Date().toISOString().slice(0, 10);
-
+    if (type==="donation"&&amount<=0) continue;
+    if (type==="income"  &&amount===0) continue;
+    const resolvedDate = fixed || toIsoDate(idx.date==null?"":row[idx.date]) || todayIso();
     imported.push({
-      id: `${Date.now()}-${Math.random()}`,
-      type,
-      date: resolvedDate,
-      description,
-      amount,
-      recipient: type === "donation" ? String(idx.recipient == null ? "" : row[idx.recipient] || "").trim() : "",
-      notes: String(idx.notes == null ? "" : row[idx.notes] || "").trim(),
-      hebrewDate: toHebrewDate(resolvedDate)
+      id: `${Date.now()}-${Math.random()}`, type, date:resolvedDate, description, amount,
+      recipient  : type==="donation" ? String(idx.recipient==null?"":row[idx.recipient]||"").trim() : "",
+      category   : "",
+      notes      : String(idx.notes==null?"":row[idx.notes]||"").trim(),
+      hebrewDate : toHebrewDate(resolvedDate)
     });
   }
-
   return imported;
 }
 
 function renderParsedExcelPreview() {
-  if (!excelRows.length) {
-    els.excelParsedPreview.innerHTML = "";
-    return;
-  }
-
+  if (!excelRows.length) { els.excelParsedPreview.innerHTML=""; return; }
   try {
     const imported = parseImportedEntries();
     if (!imported.length) {
-      els.excelParsedPreview.innerHTML = "<p style='color:#d93025;'>לא נמצאו שורות מתאימות לייבוא (בדוק את הבחירה והמיפוי)</p>";
+      els.excelParsedPreview.innerHTML="<p style='color:var(--red);padding:.8rem'>לא נמצאו שורות מתאימות — בדוק את הבחירה והמיפוי</p>";
       return;
     }
     setImportStep(4);
-
-    const rowsHtml = imported.slice(0, 50)
-      .map((entry) => {
-        return `<tr>
-          <td>${entry.type === "donation" ? "תרומה" : "הכנסה"}</td>
-          <td>${entry.date}</td>
-          <td>${entry.hebrewDate}</td>
-          <td>${entry.description}</td>
-          <td>${formatCurrency(entry.amount)}</td>
-          <td>${entry.recipient || "-"}</td>
-          <td>${entry.notes || "-"}</td>
-        </tr>`;
-      })
-      .join("");
-
+    const rowsHtml = imported.slice(0,50).map(e=>`<tr>
+      <td>${e.type==="donation"?"🤲 תרומה":"💰 הכנסה"}</td>
+      <td>${e.date}</td>
+      <td>${e.hebrewDate}</td>
+      <td>${e.description}</td>
+      <td>${formatCurrency(e.amount)}</td>
+      <td>${e.recipient||"-"}</td>
+      <td>${e.notes||"-"}</td>
+    </tr>`).join("");
     els.excelParsedPreview.innerHTML = `
-      <h4>תצוגה מקדימה של הנתונים שיובאו (${imported.length} שורות בסה"כ)</h4>
-      <table style="font-size:0.85rem;">
-        <thead><tr>
-          <th>סוג</th>
-          <th>תאריך</th>
-          <th>תאריך עברי</th>
-          <th>תיאור</th>
-          <th>סכום</th>
-          <th>מקבל</th>
-          <th>הערות</th>
-        </tr></thead>
+      <h4>תצוגה מקדימה — ${imported.length} שורות לייבוא${imported.length>50?" (מוצגות 50 ראשונות)":""}</h4>
+      <div style="overflow-x:auto;"><table>
+        <thead><tr><th>סוג</th><th>תאריך</th><th>תאריך עברי</th><th>תיאור</th><th>סכום</th><th>מקבל</th><th>הערות</th></tr></thead>
         <tbody>${rowsHtml}</tbody>
-      </table>
-    `;
+      </table></div>`;
   } catch (err) {
-    els.excelParsedPreview.innerHTML = `<p style='color:#d93025;'>שגיאה בעיבוד: ${err.message}</p>`;
+    els.excelParsedPreview.innerHTML = `<p style='color:var(--red);padding:.8rem'>שגיאה: ${err.message}</p>`;
   }
-}
-
-function updateHebrewDatePreview() {
-  els.hebrewDate.value = toHebrewDate(els.date.value);
 }
 
 function onImportExcel() {
   try {
     const imported = parseImportedEntries();
-    if (!imported.length) {
-      showNotice("לא נמצאו שורות מתאימות לייבוא", "error");
-      return;
-    }
-
-    pushHistorySnapshot();
-    for (const entry of imported) {
-      state.entries.push(entry);
-    }
-    saveState();
-    rerender();
-    showNotice(`יובאו ${imported.length} שורות בהצלחה`, "success");
+    if (!imported.length) { showToast("לא נמצאו שורות לייבוא","error"); return; }
+    pushHistory();
+    state.entries.push(...imported);
+    saveState(); rerender();
+    showToast(`✅ יובאו ${imported.length} שורות`,"success");
   } catch (err) {
-    showNotice(`ייבוא אקסל נכשל: ${err.message || "שגיאה לא ידועה"}`, "error", 5200);
+    showToast(`שגיאה: ${err.message||"לא ידועה"}`,"error");
   }
 }
 
 function onQuickImport() {
-  if (!excelRows.length) {
-    showNotice("בחר קובץ אקסל לפני ייבוא מהיר", "error");
-    return;
-  }
-
-  const fallback = profileSettings.defaultProfile;
-  const detected = profileSettings.autoProfileMode === "on" ? findProfileByFileName(excelFileName) : "";
-  const selected = detected || fallback;
-
-  if (!selected || !importProfiles[selected]) {
-    showNotice("אין תבנית מזוהה או ברירת מחדל לייבוא מהיר", "error");
-    return;
-  }
-
-  applyMappingModel(importProfiles[selected]);
+  if (!excelRows.length) { showToast("בחר קובץ Excel קודם","error"); return; }
+  const name = (profileSettings.autoProfileMode==="on" ? findProfileByFileName(excelFileName) : "") || profileSettings.defaultProfile;
+  if (!name||!importProfiles[name]) { showToast("אין תבנית מזוהה לייבוא מהיר","error"); return; }
+  applyMappingModel(importProfiles[name]);
   onImportExcel();
 }
 
+// ══════════════════════════════════════════════════════════
+//  DRAG & DROP UPLOAD ZONE
+// ══════════════════════════════════════════════════════════
+function setupDragDrop() {
+  const zone = els.uploadZone;
+  if (!zone) return;
+  zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("drag-over"); });
+  zone.addEventListener("dragleave",()=> zone.classList.remove("drag-over"));
+  zone.addEventListener("drop", async e => {
+    e.preventDefault();
+    zone.classList.remove("drag-over");
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!file) return;
+    try { await onExcelFileChosen(file); }
+    catch(err) { showToast(`שגיאת קובץ: ${err.message}`,"error"); }
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+//  RERENDER
+// ══════════════════════════════════════════════════════════
 function rerender() {
   renderSummary();
+  renderRecent();
   renderTable();
   renderFilterYearOptions();
   renderReportYearOptions();
-  renderReportChart();
+  updateUndoRedo();
+  if (activeSection==="reports") {
+    renderReportChart();
+    renderCategoryChart();
+    renderStats();
+    renderYearlySummary();
+  }
 }
 
+// ══════════════════════════════════════════════════════════
+//  EVENT BINDING
+// ══════════════════════════════════════════════════════════
 function bindEvents() {
-  els.form.addEventListener("submit", onSubmit);
-  els.type.addEventListener("change", toggleRecipient);
-  els.cancelEditBtn.addEventListener("click", resetFormToCreateMode);
-  els.entriesBodyAll.addEventListener("click", onRowActions);
-  els.entriesBodyIncome.addEventListener("click", onRowActions);
-  els.entriesBodyDonation.addEventListener("click", onRowActions);
+  // Navigation
+  els.navItems.forEach(btn => btn.addEventListener("click",()=>switchSection(btn.dataset.section)));
 
-  [els.search, els.filterYear, els.fromDate, els.toDate].forEach((el) => {
+  if (els.viewAllBtn) {
+    els.viewAllBtn.addEventListener("click",()=>switchSection("transactions"));
+  }
+
+  // Theme
+  els.themeToggle.addEventListener("click",()=>{
+    applyTheme(document.documentElement.dataset.theme!=="dark");
+  });
+
+  // Undo / Redo
+  els.undoBtn.addEventListener("click",undo);
+  els.redoBtn.addEventListener("click",redo);
+
+  // Keyboard shortcuts
+  document.addEventListener("keydown",e=>{
+    if (e.ctrlKey||e.metaKey) {
+      if (e.key==="z"&&!e.shiftKey) { e.preventDefault(); undo(); }
+      if (e.key==="y"||(e.key==="z"&&e.shiftKey)) { e.preventDefault(); redo(); }
+      if (e.key==="s") { e.preventDefault(); if(activeSection==="dashboard") els.form.requestSubmit(); }
+    }
+  });
+
+  // Export / Import
+  els.exportBtn.addEventListener("click",exportBackup);
+  els.importInput.addEventListener("change",async e=>{
+    const file=e.target.files&&e.target.files[0];
+    if(!file) return;
+    try { await importBackup(file); }
+    catch(err) { showToast(`ייבוא נכשל: ${err.message}`,"error"); }
+    finally { e.target.value=""; }
+  });
+  els.exportCsvBtn.addEventListener("click",exportCsv);
+  els.exportXlsxBtn.addEventListener("click",exportXlsx);
+
+  // Form
+  els.form.addEventListener("submit",onSubmit);
+  els.typeEl.addEventListener("change",toggleRecipient);
+  els.dateEl.addEventListener("change",updateHebrewDatePreview);
+  els.dateEl.addEventListener("input", updateHebrewDatePreview);
+  els.cancelEditBtn.addEventListener("click",resetForm);
+
+  // Clear data
+  els.clearBtn.addEventListener("click",()=>{
+    showModal("ניקוי כל הנתונים","כל הרשומות ימחקו. גיבוי אוטומטי ייצא לפני המחיקה. להמשיך?",()=>{
+      exportBackupBeforeClear();
+      pushHistory();
+      state.entries=[];
+      saveState(); resetForm(); rerender();
+      showToast("כל הנתונים נמחקו (גיבוי אוטומטי נשמר)","info",5000);
+    });
+  });
+
+  // Table row actions
+  els.entriesBody.addEventListener("click",onRowAction);
+
+  // Tab buttons
+  els.tabBtns.forEach(btn=>btn.addEventListener("click",()=>{
+    activeTab=btn.dataset.tab||"all";
+    els.tabBtns.forEach(b=>b.classList.toggle("active",b===btn));
+    renderTable();
+  }));
+
+  // Filters
+  [els.search,els.filterYear,els.fromDate,els.toDate,els.filterCategory].forEach(el=>{
     if (!el) return;
-    el.addEventListener("input", renderTable);
-    el.addEventListener("change", renderTable);
+    el.addEventListener("input",renderTable);
+    el.addEventListener("change",renderTable);
   });
 
-  els.date.addEventListener("change", updateHebrewDatePreview);
-  els.date.addEventListener("input", updateHebrewDatePreview);
+  // Column sort
+  els.tableHeaders.forEach(th=>th.addEventListener("click",()=>{
+    const field=th.dataset.sort;
+    if (sortField===field) sortDir=sortDir==="asc"?"desc":"asc";
+    else { sortField=field; sortDir="asc"; }
+    renderTable();
+  }));
 
-  els.tabBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      activeTab = btn.dataset.tab || "all";
-      els.tabBtns.forEach((x) => x.classList.toggle("active", x === btn));
-      renderTabPanels();
-      renderTable();
-    });
-  });
+  // Print
+  if (els.printBtn) els.printBtn.addEventListener("click",()=>window.print());
 
-  if (els.topTabMain) {
-    els.topTabMain.addEventListener("click", () => {
-      activeTopTab = "main";
-      renderTopPanels();
-    });
-  }
-  if (els.topTabImport) {
-    els.topTabImport.addEventListener("click", () => {
-      activeTopTab = "import";
-      renderTopPanels();
-    });
-  }
+  // Reports
+  els.reportYear.addEventListener("change",renderReportChart);
+  els.reportMode.addEventListener("change",renderReportChart);
 
-  els.exportBtn.addEventListener("click", exportBackup);
-  els.exportCsvBtn.addEventListener("click", exportCsv);
-  els.exportXlsxBtn.addEventListener("click", exportXlsx);
+  // Modal
+  els.modalOk.addEventListener("click",()=>{ if(modalCb) modalCb(); closeModal(); });
+  els.modalCancel.addEventListener("click",closeModal);
+  els.modalOverlay.addEventListener("click",e=>{ if(e.target===els.modalOverlay) closeModal(); });
 
-  if (els.undoBtn) {
-    els.undoBtn.addEventListener("click", undoLastAction);
-  }
-  if (els.redoBtn) {
-    els.redoBtn.addEventListener("click", redoLastAction);
-  }
-
-  els.importInput.addEventListener("change", async (e) => {
-    const file = e.target.files && e.target.files[0];
+  // Excel file
+  els.excelInput.addEventListener("change",async e=>{
+    const file=e.target.files&&e.target.files[0];
     if (!file) return;
-    try {
-      await importBackup(file);
-      showNotice("הגיבוי יובא בהצלחה", "success");
-    } catch (_err) {
-      showNotice("ייבוא נכשל: הקובץ לא בפורמט תקין", "error", 5000);
-    } finally {
-      e.target.value = "";
-    }
+    try { await onExcelFileChosen(file); }
+    catch(err) { showToast(`שגיאת קובץ: ${err.message}`,"error"); }
+    finally { e.target.value=""; }
   });
 
-  els.clearBtn.addEventListener("click", () => {
-    const ok = confirm("למחוק את כל הנתונים? פעולה זו לא ניתנת לביטול.");
-    if (!ok) return;
-    exportBackupBeforeClear();
-    pushHistorySnapshot();
-    state.entries = [];
-    saveState();
-    resetFormToCreateMode();
-    rerender();
-    showNotice("כל הנתונים נמחקו (נוצר גיבוי אוטומטי לפני המחיקה)", "success", 4800);
+  els.excelSheet.addEventListener("change",()=>{
+    try { loadSelectedSheetRows(); renderParsedExcelPreview(); }
+    catch { showToast("טעינת גיליון נכשלה","error"); }
   });
 
-  els.reportYear.addEventListener("change", renderReportChart);
-  els.reportMode.addEventListener("change", renderReportChart);
-
-  els.excelInput.addEventListener("change", async (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    try {
-      await onExcelFileChosen(file);
-    } catch (err) {
-      const details = err && err.message ? `: ${err.message}` : "";
-      showNotice(`קריאת קובץ אקסל נכשלה${details}`, "error", 5200);
-    } finally {
-      e.target.value = "";
-    }
-  });
-
-  els.excelSheet.addEventListener("change", () => {
-    try {
-      loadSelectedSheetRows();
-      renderParsedExcelPreview();
-    } catch (_err) {
-      showNotice("טעינת הגיליון נכשלה", "error", 5000);
-    }
-  });
-
-  els.excelHasHeader.addEventListener("change", () => {
+  els.excelHasHeader.addEventListener("change",()=>{
     if (!excelRows.length) return;
-    updateMappingOptionsFromSelectedRow();
-    
-    renderExcelPreview();
-    renderParsedExcelPreview();
-    updateSelectedRowsCounter();
+    updateMappingOptions(); renderExcelPreview(); renderParsedExcelPreview(); updateSelectedRowsCounter();
   });
 
-  els.excelStartRow.addEventListener("change", () => {
+  els.excelStartRow.addEventListener("change",()=>{
     if (!excelRows.length) return;
-    updateMappingOptionsFromSelectedRow();
-    
-    renderExcelPreview();
-    renderParsedExcelPreview();
-    updateSelectedRowsCounter();
+    updateMappingOptions(); renderExcelPreview(); renderParsedExcelPreview(); updateSelectedRowsCounter();
   });
 
-  els.excelType.addEventListener("change", () => renderParsedExcelPreview());
-  els.excelAmountMode.addEventListener("change", () => renderParsedExcelPreview());
-  els.excelFixedDate.addEventListener("change", () => renderParsedExcelPreview());
-  els.excelImportSearch.addEventListener("input", () => {
-    renderExcelPreview();
-    renderParsedExcelPreview();
-    updateSelectedRowsCounter();
+  [els.excelType,els.excelAmountMode,els.excelFixedDate].forEach(el=>{
+    if(el) el.addEventListener("change",()=>renderParsedExcelPreview());
   });
 
-  [els.mapDescription, els.mapAmount, els.mapDate, els.mapNotes, els.mapRecipient].forEach((sel) => {
-    sel.addEventListener("change", () => renderParsedExcelPreview());
+  els.excelImportSearch.addEventListener("input",()=>{
+    renderExcelPreview(); renderParsedExcelPreview(); updateSelectedRowsCounter();
   });
 
-  els.saveProfileBtn.addEventListener("click", saveCurrentProfile);
-  els.loadProfileBtn.addEventListener("click", loadSelectedProfile);
-  els.deleteProfileBtn.addEventListener("click", deleteSelectedProfile);
-  els.setDefaultProfileBtn.addEventListener("click", setDefaultProfile);
-  els.clearDefaultProfileBtn.addEventListener("click", clearDefaultProfile);
-  els.autoProfileMode.addEventListener("change", onAutoProfileModeChange);
-  els.exportProfilesBtn.addEventListener("click", exportProfilesJson);
-  els.autoMapBtn.addEventListener("click", autoMapColumns);
-
-  els.importProfilesInput.addEventListener("change", async (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    try {
-      await importProfilesJson(file);
-      showNotice("תבניות יובאו בהצלחה", "success");
-    } catch (_err) {
-      showNotice("ייבוא תבניות נכשל", "error", 5000);
-    } finally {
-      e.target.value = "";
-    }
+  [els.mapDescription,els.mapAmount,els.mapDate,els.mapNotes,els.mapRecipient].forEach(sel=>{
+    sel.addEventListener("change",()=>renderParsedExcelPreview());
   });
 
-  els.excelRowMode.addEventListener("change", () => {
-    renderExcelPreview();
-    renderParsedExcelPreview();
-    updateSelectedRowsCounter();
+  els.excelRowMode.addEventListener("change",()=>{
+    renderExcelPreview(); renderParsedExcelPreview(); updateSelectedRowsCounter();
   });
 
-  els.selectAllRowsBtn.addEventListener("click", () => {
-    if (els.excelRowMode.value !== "selected") {
-      els.excelRowMode.value = "selected";
-      renderExcelPreview();
-    }
-    setAllRowChecks(true);
-    updateSelectedRowsCounter();
+  els.selectAllRowsBtn.addEventListener("click",()=>{
+    if(els.excelRowMode.value!=="selected"){ els.excelRowMode.value="selected"; renderExcelPreview(); }
+    setAllRowChecks(true); updateSelectedRowsCounter();
+  });
+  els.clearAllRowsBtn.addEventListener("click",()=>{
+    if(els.excelRowMode.value!=="selected"){ els.excelRowMode.value="selected"; renderExcelPreview(); }
+    setAllRowChecks(false); updateSelectedRowsCounter();
   });
 
-  els.clearAllRowsBtn.addEventListener("click", () => {
-    if (els.excelRowMode.value !== "selected") {
-      els.excelRowMode.value = "selected";
-      renderExcelPreview();
-    }
-    setAllRowChecks(false);
-    updateSelectedRowsCounter();
+  els.autoMapBtn.addEventListener("click",autoMapColumns);
+
+  // Profiles
+  els.saveProfileBtn.addEventListener("click",saveCurrentProfile);
+  els.loadProfileBtn.addEventListener("click",loadSelectedProfile);
+  els.deleteProfileBtn.addEventListener("click",deleteSelectedProfile);
+  els.setDefaultProfileBtn.addEventListener("click",setDefaultProfile);
+  els.clearDefaultProfileBtn.addEventListener("click",clearDefaultProfile);
+  els.autoProfileMode.addEventListener("change",()=>{
+    profileSettings.autoProfileMode=els.autoProfileMode.value==="off"?"off":"on";
+    saveProfileSettings();
+  });
+  els.exportProfilesBtn.addEventListener("click",exportProfilesJson);
+  els.importProfilesInput.addEventListener("change",async e=>{
+    const file=e.target.files&&e.target.files[0];
+    if(!file) return;
+    try { await importProfilesJson(file); }
+    catch(err) { showToast(`ייבוא תבניות נכשל: ${err.message}`,"error"); }
+    finally { e.target.value=""; }
   });
 
-  els.importExcelBtn.addEventListener("click", onImportExcel);
-  els.quickImportBtn.addEventListener("click", onQuickImport);
+  els.importExcelBtn.addEventListener("click",onImportExcel);
+  els.quickImportBtn.addEventListener("click",onQuickImport);
+
+  setupDragDrop();
 }
 
+// ══════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════
 function init() {
+  loadTheme();
   loadState();
-  state.entries = state.entries.map((e) => ({
-    ...e,
-    hebrewDate: toHebrewDate(e.date) || e.hebrewDate || ""
-  }));
+  // Re-compute hebrewDate for all entries
+  state.entries = state.entries.map(e=>({...e, hebrewDate:toHebrewDate(e.date)||e.hebrewDate||""}));
   loadProfiles();
   loadProfileSettings();
   bindEvents();
   renderProfileOptions();
-  updateDefaultProfileUiHint();
-  resetFormToCreateMode();
+  resetForm();
   setImportStep(1);
-  renderTopPanels();
-  renderTabPanels();
+  renderFilterYearOptions();
+  renderReportYearOptions();
   rerender();
-  updateSelectedRowsCounter();
-  updateUndoRedoButtons();
+  updateUndoRedo();
 }
 
 init();

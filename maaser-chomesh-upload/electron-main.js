@@ -1,25 +1,33 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, shell } = require("electron");
 const path = require("path");
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1200,
-    height: 820,
-    minWidth: 980,
-    minHeight: 700,
+    width: 1280,
+    height: 860,
+    minWidth: 900,
+    minHeight: 640,
     autoHideMenuBar: true,
+    title: "ניהול מעשרות וחומש",
+    backgroundColor: "#f0f2f8",
     webPreferences: {
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      devTools: false
     }
   });
 
   win.loadFile(path.join(__dirname, "index.html"));
+
+  // Open external links in browser
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: "deny" };
+  });
 }
 
 app.whenReady().then(() => {
   createWindow();
-
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
