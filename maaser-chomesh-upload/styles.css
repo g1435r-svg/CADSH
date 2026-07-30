@@ -6,10 +6,11 @@
   --muted: #5e6a82;
   --primary: #1558d6;
   --danger: #b42318;
-  --ok: #067647;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   margin: 0;
@@ -19,7 +20,7 @@ body {
 }
 
 .app {
-  max-width: 1050px;
+  max-width: 1160px;
   margin: 0 auto;
   padding: 1rem;
   display: grid;
@@ -33,15 +34,24 @@ body {
   padding: 1rem;
 }
 
-.hero h1 { margin: 0 0 0.3rem; }
-.hero p { margin: 0; color: var(--muted); }
+.hero h1 {
+  margin: 0 0 0.3rem;
+}
 
-h2 { margin: 0 0 0.8rem; }
+.hero p {
+  margin: 0;
+  color: var(--muted);
+}
+
+h2 {
+  margin: 0 0 0.8rem;
+}
 
 .stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 0.7rem;
+  margin-bottom: 0.8rem;
 }
 
 .stats article {
@@ -63,10 +73,47 @@ h2 { margin: 0 0 0.8rem; }
   font-weight: 700;
 }
 
-#balance.positive { color: var(--ok); }
-#balance.negative { color: var(--danger); }
+.summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
 
-.form-grid {
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+}
+
+.tab-btn {
+  border: 1px solid var(--line);
+  background: #f6f9ff;
+  color: #17367a;
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  cursor: pointer;
+}
+
+.tab-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.tab-panel {
+  display: none;
+  gap: 0.8rem;
+}
+
+.tab-panel.active {
+  display: grid;
+}
+
+.form-grid,
+.search-grid,
+.import-grid,
+.mapping-grid {
   display: grid;
   gap: 0.75rem;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -79,11 +126,14 @@ label {
   font-size: 0.94rem;
 }
 
-input, select, button {
+input,
+select,
+button {
   font: inherit;
 }
 
-input, select {
+input,
+select {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 0.56rem 0.65rem;
@@ -94,6 +144,7 @@ input, select {
   display: flex;
   gap: 0.6rem;
   align-items: end;
+  flex-wrap: wrap;
 }
 
 .btn {
@@ -116,23 +167,9 @@ input, select {
   border-color: #ffd6d4;
 }
 
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  justify-content: space-between;
-  margin-bottom: 0.7rem;
-}
-
-#search {
-  min-width: 240px;
-  flex: 1;
-}
-
-.toolbar-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .upload-btn {
@@ -150,13 +187,15 @@ input, select {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 700px;
+  min-width: 680px;
 }
 
-th, td {
+th,
+td {
   text-align: right;
   border-bottom: 1px solid var(--line);
   padding: 0.55rem 0.45rem;
+  vertical-align: top;
 }
 
 thead th {
@@ -166,6 +205,12 @@ thead th {
 .actions {
   display: flex;
   gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.hint {
+  margin: 0;
+  color: var(--muted);
 }
 
 .empty {

@@ -10,103 +10,256 @@
     <main class="app">
       <header class="card hero">
         <h1>מערכת יבא יצא</h1>
-        <p>ניהול הכנסות והוצאות, שמירה מקומית, ייבוא/ייצוא נתונים</p>
+        <p>ניהול הכנסות ותרומות עם יעדי מעשר וחומש, ייבוא חכם וגיבוי</p>
       </header>
 
       <section class="card">
         <h2>סיכום מהיר</h2>
         <div class="stats">
           <article>
-            <h3>סה"כ יבא</h3>
-            <p id="total-in">₪0.00</p>
+            <h3>סה"כ הכנסות</h3>
+            <p id="total-income">₪0.00</p>
           </article>
           <article>
-            <h3>סה"כ יצא</h3>
-            <p id="total-out">₪0.00</p>
+            <h3>סה"כ תרומות</h3>
+            <p id="total-donation">₪0.00</p>
           </article>
           <article>
-            <h3>יתרה</h3>
-            <p id="balance">₪0.00</p>
+            <h3>יעד מעשר (10%)</h3>
+            <p id="maaser-target">₪0.00</p>
           </article>
           <article>
-            <h3>כמות רשומות</h3>
-            <p id="entries-count">0</p>
+            <h3>יעד חומש (20%)</h3>
+            <p id="chomesh-target">₪0.00</p>
           </article>
+          <article>
+            <h3>נותר למעשר</h3>
+            <p id="maaser-left">₪0.00</p>
+          </article>
+          <article>
+            <h3>נותר לחומש</h3>
+            <p id="chomesh-left">₪0.00</p>
+          </article>
+        </div>
+        <div class="summary-actions">
+          <button id="undo-btn" class="btn" type="button">ביטול פעולה</button>
+          <button id="redo-btn" class="btn" type="button">שחזור פעולה</button>
+          <button id="export-btn" class="btn" type="button">ייצוא JSON</button>
+          <label class="btn upload-btn">
+            ייבוא JSON
+            <input id="import-json-input" type="file" accept="application/json" hidden />
+          </label>
+          <button id="reset-btn" class="btn danger" type="button">איפוס המערכת</button>
         </div>
       </section>
 
       <section class="card">
-        <h2 id="form-title">רישום חדש</h2>
-        <form id="entry-form" class="form-grid">
-          <input type="hidden" id="editing-id" />
+        <div class="tabs" role="tablist" aria-label="ניווט">
+          <button class="tab-btn active" data-tab="income" type="button">הכנסות</button>
+          <button class="tab-btn" data-tab="donation" type="button">תרומות</button>
+          <button class="tab-btn" data-tab="search" type="button">חיפוש וסינון</button>
+          <button class="tab-btn" data-tab="import" type="button">ייבוא מאקסל</button>
+        </div>
 
-          <label>
-            סוג
-            <select id="type" required>
-              <option value="income">יבא (הכנסה)</option>
-              <option value="expense">יצא (הוצאה/תרומה)</option>
-            </select>
-          </label>
-
-          <label>
-            תאריך
-            <input type="date" id="date" required />
-          </label>
-
-          <label>
-            תיאור
-            <input type="text" id="description" required placeholder="למשל: משכורת / קניה" />
-          </label>
-
-          <label>
-            סכום
-            <input type="number" id="amount" required min="0" step="0.01" placeholder="0.00" />
-          </label>
-
-          <label>
-            הערות
-            <input type="text" id="notes" placeholder="אופציונלי" />
-          </label>
-
-          <div class="form-actions">
-            <button type="submit" class="btn primary" id="save-btn">שמור</button>
-            <button type="button" class="btn" id="cancel-edit-btn">ביטול עריכה</button>
-          </div>
-        </form>
-      </section>
-
-      <section class="card">
-        <h2>כל הרשומות</h2>
-        <div class="toolbar">
-          <input id="search" type="search" placeholder="חיפוש בתיאור/הערות" />
-          <div class="toolbar-actions">
-            <button id="export-btn" class="btn" type="button">ייצוא JSON</button>
-            <label class="btn upload-btn">
-              ייבוא JSON
-              <input id="import-input" type="file" accept="application/json" hidden />
+        <section class="tab-panel active" data-panel="income">
+          <h2>כרטיסיית הכנסות</h2>
+          <form id="income-form" class="form-grid">
+            <input type="hidden" id="income-editing-id" />
+            <label>
+              תאריך
+              <input type="date" id="income-date" required />
             </label>
-            <button id="clear-btn" class="btn danger" type="button">ניקוי הכל</button>
+            <label>
+              תיאור
+              <input type="text" id="income-description" required placeholder="למשל: משכורת" />
+            </label>
+            <label>
+              סכום
+              <input type="number" id="income-amount" required min="0" step="0.01" placeholder="0.00" />
+            </label>
+            <label>
+              הערות
+              <input type="text" id="income-notes" placeholder="אופציונלי" />
+            </label>
+            <div class="form-actions">
+              <button type="submit" class="btn primary" id="income-save-btn">שמור הכנסה</button>
+              <button type="button" class="btn" id="income-cancel-btn">ביטול עריכה</button>
+            </div>
+          </form>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>תאריך</th>
+                  <th>תיאור</th>
+                  <th>סכום</th>
+                  <th>הערות</th>
+                  <th>פעולות</th>
+                </tr>
+              </thead>
+              <tbody id="income-rows"></tbody>
+            </table>
           </div>
-        </div>
+        </section>
 
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>סוג</th>
-                <th>תאריך</th>
-                <th>תיאור</th>
-                <th>סכום</th>
-                <th>הערות</th>
-                <th>פעולות</th>
-              </tr>
-            </thead>
-            <tbody id="entries-body"></tbody>
-          </table>
-        </div>
+        <section class="tab-panel" data-panel="donation">
+          <h2>כרטיסיית תרומות</h2>
+          <form id="donation-form" class="form-grid">
+            <input type="hidden" id="donation-editing-id" />
+            <label>
+              תאריך
+              <input type="date" id="donation-date" required />
+            </label>
+            <label>
+              תיאור
+              <input type="text" id="donation-description" required placeholder="למשל: תרומה לבית כנסת" />
+            </label>
+            <label>
+              סכום
+              <input type="number" id="donation-amount" required min="0" step="0.01" placeholder="0.00" />
+            </label>
+            <label>
+              הערות
+              <input type="text" id="donation-notes" placeholder="אופציונלי" />
+            </label>
+            <div class="form-actions">
+              <button type="submit" class="btn primary" id="donation-save-btn">שמור תרומה</button>
+              <button type="button" class="btn" id="donation-cancel-btn">ביטול עריכה</button>
+            </div>
+          </form>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>תאריך</th>
+                  <th>תיאור</th>
+                  <th>סכום</th>
+                  <th>הערות</th>
+                  <th>פעולות</th>
+                </tr>
+              </thead>
+              <tbody id="donation-rows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="tab-panel" data-panel="search">
+          <h2>כרטיסיית חיפוש וסינון</h2>
+          <div class="search-grid">
+            <label>
+              חיפוש חופשי
+              <input id="search-text" type="search" placeholder="חיפוש בתיאור/הערות" />
+            </label>
+            <label>
+              סוג
+              <select id="search-type">
+                <option value="all">הכל</option>
+                <option value="income">הכנסות</option>
+                <option value="donation">תרומות</option>
+              </select>
+            </label>
+            <label>
+              שנה
+              <select id="search-year">
+                <option value="all">כל השנים</option>
+              </select>
+            </label>
+            <label>
+              חודש
+              <select id="search-month">
+                <option value="all">כל החודשים</option>
+              </select>
+            </label>
+          </div>
+          <p id="search-count" class="hint">0 תוצאות</p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>סוג</th>
+                  <th>תאריך</th>
+                  <th>תיאור</th>
+                  <th>סכום</th>
+                  <th>הערות</th>
+                </tr>
+              </thead>
+              <tbody id="search-rows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="tab-panel" data-panel="import">
+          <h2>ייבוא חכם מאקסל</h2>
+          <div class="import-grid">
+            <label>
+              קובץ Excel
+              <input id="import-excel-input" type="file" accept=".xlsx,.xls,.xlsm" />
+            </label>
+            <label>
+              לייבא אל
+              <select id="import-target">
+                <option value="income">הכנסות</option>
+                <option value="donation">תרומות</option>
+              </select>
+            </label>
+            <label>
+              תאריך אחיד לכל הייבוא (אופציונלי)
+              <input id="import-fixed-date" type="date" />
+            </label>
+            <label>
+              משורה
+              <input id="import-start-row" type="number" min="1" step="1" value="1" />
+            </label>
+            <label>
+              עד שורה
+              <input id="import-end-row" type="number" min="1" step="1" />
+            </label>
+          </div>
+
+          <div class="mapping-grid">
+            <label>
+              מיפוי תיאור
+              <select id="map-description"></select>
+            </label>
+            <label>
+              מיפוי תאריך
+              <select id="map-date"></select>
+            </label>
+            <label>
+              מיפוי סכום
+              <select id="map-amount"></select>
+            </label>
+            <label>
+              מיפוי הערות
+              <select id="map-notes"></select>
+            </label>
+          </div>
+
+          <div class="summary-actions">
+            <button id="apply-range-btn" class="btn" type="button">החל טווח שורות</button>
+            <button id="select-all-rows-btn" class="btn" type="button">בחר הכל</button>
+            <button id="clear-all-rows-btn" class="btn" type="button">נקה בחירה</button>
+            <button id="import-excel-btn" class="btn primary" type="button">ייבוא מאקסל</button>
+          </div>
+          <p id="import-status" class="hint">בחר קובץ אקסל כדי להתחיל.</p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>בחירה</th>
+                  <th>שורה</th>
+                  <th>נתונים</th>
+                </tr>
+              </thead>
+              <tbody id="import-preview-rows"></tbody>
+            </table>
+          </div>
+        </section>
       </section>
     </main>
 
+    <script src="vendor/exceljs.min.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
