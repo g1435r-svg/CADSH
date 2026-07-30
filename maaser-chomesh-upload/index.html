@@ -7,15 +7,31 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="app">
-      <section class="hero">
-        <h1>מערכת יבא יצא</h1>
-        <p>תבנית חדשה, נקייה ופשוטה לניהול הכנסות ותרומות.</p>
-      </section>
+    <main class="app-shell">
+      <header class="hero-card">
+        <div>
+          <h1>מערכת יבא יצא חדשה</h1>
+          <p>מערכת נקייה לגמרי לניהול הכנסות, תרומות וייבוא נתונים.</p>
+        </div>
+        <span class="hero-badge">גרסה חדשה</span>
+      </header>
 
-      <section class="card summary-card">
-        <h2>סיכום</h2>
-        <div class="stats">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>דשבורד נתונים</h2>
+          <div class="summary-actions">
+            <button id="undo-btn" class="btn" type="button">ביטול</button>
+            <button id="redo-btn" class="btn" type="button">שחזור</button>
+            <button id="export-btn" class="btn" type="button">ייצוא JSON</button>
+            <label class="btn upload-btn">
+              ייבוא JSON
+              <input id="import-json-input" type="file" accept="application/json" hidden />
+            </label>
+            <button id="reset-btn" class="btn danger" type="button">מחיקה מלאה</button>
+          </div>
+        </div>
+
+        <div class="stats-grid">
           <article>
             <h3>סה"כ הכנסות</h3>
             <p id="total-income">₪0.00</p>
@@ -23,6 +39,10 @@
           <article>
             <h3>סה"כ תרומות</h3>
             <p id="total-donation">₪0.00</p>
+          </article>
+          <article>
+            <h3>יתרה נוכחית</h3>
+            <p id="net-balance">₪0.00</p>
           </article>
           <article>
             <h3>יעד מעשר (10%)</h3>
@@ -41,19 +61,9 @@
             <p id="chomesh-left">₪0.00</p>
           </article>
         </div>
-        <div class="summary-actions">
-          <button id="undo-btn" class="btn" type="button">ביטול</button>
-          <button id="redo-btn" class="btn" type="button">שחזור</button>
-          <button id="export-btn" class="btn" type="button">ייצוא JSON</button>
-          <label class="btn upload-btn">
-            ייבוא JSON
-            <input id="import-json-input" type="file" accept="application/json" hidden />
-          </label>
-          <button id="reset-btn" class="btn danger" type="button">ניקוי מלא</button>
-        </div>
       </section>
 
-      <section class="card workspace-card">
+      <section class="panel">
         <div class="tabs" role="tablist" aria-label="ניווט">
           <button class="tab-btn active" data-tab="income" type="button">הכנסות</button>
           <button class="tab-btn" data-tab="donation" type="button">תרומות</button>

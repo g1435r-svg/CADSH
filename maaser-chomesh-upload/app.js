@@ -1,10 +1,10 @@
-const STORAGE_KEY = "maaser-chomesh-data-v3";
-const MAPPING_KEY = "maaser-chomesh-excel-mappings-v1";
+const STORAGE_KEY = "maaser-chomesh-data-v4";
+const MAPPING_KEY = "maaser-chomesh-excel-mappings-v2";
 const MAX_HISTORY = 200;
 
 let state = {
   entries: [],
-  version: "6.0",
+  version: "7.0",
   updatedAt: new Date().toISOString()
 };
 
@@ -21,6 +21,7 @@ const importState = {
 const els = {
   totalIncome: document.getElementById("total-income"),
   totalDonation: document.getElementById("total-donation"),
+  netBalance: document.getElementById("net-balance"),
   maaserTarget: document.getElementById("maaser-target"),
   chomeshTarget: document.getElementById("chomesh-target"),
   maaserLeft: document.getElementById("maaser-left"),
@@ -239,6 +240,7 @@ function sortedEntries(entries) {
 function renderSummary() {
   const totalIncome = state.entries.filter((entry) => entry.type === "income").reduce((sum, entry) => sum + entry.amount, 0);
   const totalDonation = state.entries.filter((entry) => entry.type === "donation").reduce((sum, entry) => sum + entry.amount, 0);
+  const netBalance = totalIncome - totalDonation;
   const maaserTarget = totalIncome * 0.1;
   const chomeshTarget = totalIncome * 0.2;
   const maaserLeft = Math.max(maaserTarget - totalDonation, 0);
@@ -246,6 +248,7 @@ function renderSummary() {
 
   els.totalIncome.textContent = formatCurrency(totalIncome);
   els.totalDonation.textContent = formatCurrency(totalDonation);
+  if (els.netBalance) els.netBalance.textContent = formatCurrency(netBalance);
   els.maaserTarget.textContent = formatCurrency(maaserTarget);
   els.chomeshTarget.textContent = formatCurrency(chomeshTarget);
   els.maaserLeft.textContent = formatCurrency(maaserLeft);
@@ -846,7 +849,7 @@ function wireEvents() {
   });
 
   els.resetBtn.addEventListener("click", () => {
-    if (!confirm("לאפס את כל הנתונים במערכת?")) return;
+    if (!confirm("למחוק הכל ולהתחיל מערכת חדשה ונקייה?")) return;
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(MAPPING_KEY);
     historyState.past = [];
