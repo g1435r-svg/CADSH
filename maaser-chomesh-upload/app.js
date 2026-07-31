@@ -25,6 +25,7 @@ let manualSelectedRows = new Set();
 let autoBackupEnabled = false;
 let autoBackupIntervalMinutes = 10;
 let autoBackupTimer = null;
+let autoBackupInFlight = false;
 
 const els = {
   form: document.getElementById("entry-form"),
@@ -1634,27 +1635,33 @@ function backupTimestamp() {
 }
 
 async function runAutoBackup() {
+  if (autoBackupInFlight) return;
   if (!state.entries.length) return;
-  const data = JSON.stringify(state, null, 2);
+  autoBackupInFlight = true;
+  try {
+    const data = JSON.stringify(state, null, 2);
 
-  // In Electron context: silently save to userData/auto-backups folder
-  if (typeof window !== "undefined" && window.electronAPI && window.electronAPI.isElectron) {
-    const result = await window.electronAPI.saveAutoBackup(data);
-    if (result && result.ok) {
-      showNotice("גיבוי אוטומטי נשמר בהצלחה", "success", 3000);
+    // In Electron context: silently save to userData/auto-backups folder
+    if (typeof window !== "undefined" && window.electronAPI && window.electronAPI.isElectron) {
+      const result = await window.electronAPI.saveAutoBackup(data);
+      if (result && result.ok) {
+        showNotice("גיבוי אוטומטי נשמר בהצלחה", "success", 3000);
+      } else {
+        showNotice("גיבוי אוטומטי נכשל", "error", 3000);
+      }
     } else {
-      showNotice("גיבוי אוטומטי נכשל", "error", 3000);
+      // Browser fallback: trigger download
+      const blob = new Blob([data], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `auto_backup_${backupTimestamp()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showNotice("גיבוי אוטומטי הורד", "success", 3000);
     }
-  } else {
-    // Browser fallback: trigger download
-    const blob = new Blob([data], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `auto_backup_${backupTimestamp()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showNotice("גיבוי אוטומטי הורד", "success", 3000);
+  } finally {
+    autoBackupInFlight = false;
   }
 }
 
