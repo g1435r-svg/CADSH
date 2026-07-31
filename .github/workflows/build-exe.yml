@@ -41,29 +41,39 @@ jobs:
           retention-days: 90
 
       - name: Create / update GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest-build
-          name: "📦 גרסה אחרונה — מעשרות וחומש"
-          body: |
-            ## הורדה ישירה של קובץ EXE
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag   = "latest-build"
+          $title = "📦 גרסה אחרונה — מעשרות וחומש"
+          $notes = @"
+          ## הורדה ישירה של קובץ EXE
 
-            לחץ על הקובץ **MaaserChomesh.exe** למטה להורדה ישירה.
+          לחץ על הקובץ **MaaserChomesh.exe** למטה להורדה ישירה.
 
-            **מה כולל האפליקציה:**
-            - 📊 לוח בקרה עם סיכום הכנסות, מעשר וחומש
-            - 📋 ניהול רשומות הכנסות ותרומות
-            - 📈 דוחות חודשיים / שנתיים עם גרפים
-            - ⬆️ ייבוא מאקסל (בנק, אשראי)
-            - 💾 גיבוי ייצוא / ייבוא JSON, CSV, XLSX
-            - 🌙 מצב לילה
-            - ↩ בטל / שחזר פעולה
-            - קטגוריות לתרומות, סטטיסטיקות מפורטות
+          **מה כולל האפליקציה:**
+          - 📊 לוח בקרה עם סיכום הכנסות, מעשר וחומש
+          - 📋 ניהול רשומות הכנסות ותרומות
+          - 📈 דוחות חודשיים / שנתיים עם גרפים
+          - ⬆️ ייבוא מאקסל (בנק, אשראי)
+          - 💾 גיבוי ייצוא / ייבוא JSON, CSV, XLSX
+          - 🌙 מצב לילה
+          - ↩ בטל / שחזר פעולה
+          - קטגוריות לתרומות, סטטיסטיקות מפורטות
 
-            > **לא נדרשת התקנה** — קובץ נייד (Portable)
+          > **לא נדרשת התקנה** — קובץ נייד (Portable)
 
-            ---
-            בנייה אוטומטית מ-commit: ${{ github.sha }}
-          files: maaser-chomesh-upload/dist/*.exe
-          make_latest: true
-          prerelease: false
+          ---
+          בנייה אוטומטית מ-commit: ${{ github.sha }}
+          "@
+
+          # Delete existing release + tag so we can recreate cleanly
+          gh release delete $tag --yes 2>$null; $true
+          git push origin ":refs/tags/$tag" 2>$null; $true
+
+          # Create fresh release with the EXE
+          gh release create $tag dist\MaaserChomesh.exe `
+            --title $title `
+            --notes $notes `
+            --latest
