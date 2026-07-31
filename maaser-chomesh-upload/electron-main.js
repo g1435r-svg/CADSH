@@ -19,9 +19,14 @@ function createWindow() {
 
   win.loadFile(path.join(__dirname, "index.html"));
 
-  // Open external links in browser
+  // Open external links in browser (http/https only)
   win.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+        shell.openExternal(url);
+      }
+    } catch {}
     return { action: "deny" };
   });
 }

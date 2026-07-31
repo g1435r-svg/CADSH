@@ -1427,7 +1427,7 @@ function bindEvents() {
   els.reportMode.addEventListener("change",renderReportChart);
 
   // Modal
-  els.modalOk.addEventListener("click",()=>{ if(modalCb) modalCb(); closeModal(); });
+  els.modalOk.addEventListener("click",()=>{ try { if(modalCb) modalCb(); } finally { closeModal(); } });
   els.modalCancel.addEventListener("click",closeModal);
   els.modalOverlay.addEventListener("click",e=>{ if(e.target===els.modalOverlay) closeModal(); });
 
