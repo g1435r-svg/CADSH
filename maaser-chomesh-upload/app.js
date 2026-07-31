@@ -133,6 +133,15 @@ function formatCurrency(num) {
   return new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS" }).format(num || 0);
 }
 
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function toNumber(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
@@ -1340,12 +1349,12 @@ function renderParsedExcelPreview() {
       .map((entry) => {
         return `<tr>
           <td>${entry.type === "donation" ? "תרומה" : "הכנסה"}</td>
-          <td>${entry.date}</td>
-          <td>${entry.hebrewDate}</td>
-          <td>${entry.description}</td>
+          <td>${escapeHtml(entry.date)}</td>
+          <td>${escapeHtml(entry.hebrewDate)}</td>
+          <td>${escapeHtml(entry.description)}</td>
           <td>${formatCurrency(entry.amount)}</td>
-          <td>${entry.recipient || "-"}</td>
-          <td>${entry.notes || "-"}</td>
+          <td>${escapeHtml(entry.recipient || "-")}</td>
+          <td>${escapeHtml(entry.notes || "-")}</td>
         </tr>`;
       })
       .join("");
