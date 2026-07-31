@@ -439,11 +439,13 @@ function renderRecent() {
   els.recentList.innerHTML = sorted.map(e => {
     const cls = e.type === "income" ? "income" : "donation";
     const sign = e.type === "donation" ? "-" : "+";
+    const desc = escapeHtml(e.description);
+    const date = escapeHtml(e.date);
     return `<li class="recent-item">
       <span class="recent-badge ${cls}"></span>
-      <span class="recent-desc" title="${e.description}">${e.description}</span>
+      <span class="recent-desc" title="${desc}">${desc}</span>
       <span class="recent-amount ${cls}">${sign}${formatCurrency(Math.abs(toNumber(e.amount)))}</span>
-      <span class="recent-date">${e.date}</span>
+      <span class="recent-date">${date}</span>
     </li>`;
   }).join("");
 }
