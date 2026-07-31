@@ -211,6 +211,86 @@ body {
 
 .theme-toggle { margin-bottom: 0.4rem; }
 
+/* Auto-backup row */
+.auto-backup-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  padding: 0.35rem 0.2rem 0;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  flex-wrap: wrap;
+}
+
+.auto-backup-label {
+  font-size: 0.72rem;
+  color: var(--sidebar-text);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.auto-backup-row select {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.3rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,0.15);
+  background: var(--sidebar-item);
+  color: var(--sidebar-text);
+  cursor: pointer;
+  font-family: var(--font);
+}
+
+/* Toggle switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.2);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.toggle-slider::before {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  left: 3px;
+  top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--primary, #4f7cff);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(16px);
+}
+
+.toggle-switch input:focus-visible + .toggle-slider {
+  outline: 2px solid var(--primary, #4f7cff);
+  outline-offset: 2px;
+}
+
 /* ═══════════════════════════════════════════
    MAIN WRAPPER
 ═══════════════════════════════════════════ */
