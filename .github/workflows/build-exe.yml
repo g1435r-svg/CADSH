@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Install dependencies
         run: npm install
@@ -52,12 +52,12 @@ jobs:
 
       - name: Create / update GitHub Release
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest-build
-          target_commitish: ${{ github.sha }}
-          name: "📦 גרסה אחרונה — מעשרות וחומש"
-          body: |
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: latest-build
+          RELEASE_NAME: "📦 גרסה אחרונה — מעשרות וחומש"
+          RELEASE_NOTES: |
             ## הורדה ישירה של קובץ EXE
 
             לחץ על הקובץ **MaaserChomesh.exe** למטה להורדה ישירה.
@@ -76,7 +76,15 @@ jobs:
 
             ---
             בנייה אוטומטית מ-commit: ${{ github.sha }}
-          files: ${{ steps.exe.outputs.exe_path }}
-          overwrite_files: true
-          make_latest: true
-          prerelease: false
+        run: |
+          $exePath = "${{ steps.exe.outputs.exe_path }}"
+          gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY 1>$null 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            gh release edit $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --title $env:RELEASE_NAME --notes $env:RELEASE_NOTES --latest
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } else {
+            gh release create $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title $env:RELEASE_NAME --notes $env:RELEASE_NOTES --latest
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          gh release upload $env:RELEASE_TAG $exePath --repo $env:GITHUB_REPOSITORY --clobber
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

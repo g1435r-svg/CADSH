@@ -1,7 +1,7 @@
 @echo off
 where node >nul 2>nul
 if errorlevel 1 (
-  echo Node.js is not installed. Please install Node.js 20+ first.
+  echo Node.js is not installed. Please install Node.js 24+ first.
   pause
   exit /b 1
 )
