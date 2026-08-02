@@ -50,6 +50,19 @@
       <button id="export-csv-btn" class="tool-btn" title="ייצוא CSV">📄</button>
       <button id="export-xlsx-btn" class="tool-btn" title="ייצוא XLSX">📊</button>
     </div>
+    <div class="auto-backup-row">
+      <label class="toggle-switch">
+        <input type="checkbox" id="auto-backup-toggle" aria-label="גיבוי אוטומטי" />
+        <span class="toggle-slider"></span>
+      </label>
+      <span class="auto-backup-label">גיבוי אוטו׳</span>
+      <select id="auto-backup-interval" aria-label="תדירות גיבוי אוטומטי" title="תדירות גיבוי אוטומטי">
+        <option value="5">5 דקות</option>
+        <option value="10" selected>10 דקות</option>
+        <option value="30">30 דקות</option>
+        <option value="60">שעה</option>
+      </select>
+    </div>
   </div>
 </aside>
 

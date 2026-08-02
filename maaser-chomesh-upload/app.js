@@ -6,6 +6,7 @@ const STORAGE_KEY      = "maaser-chomesh-data-v2";
 const PROFILES_KEY     = "maaser-chomesh-import-profiles-v1";
 const PROF_SETTINGS_KEY= "maaser-chomesh-import-profile-settings-v1";
 const THEME_KEY        = "maaser-chomesh-theme-v1";
+const AUTO_BACKUP_KEY  = "maaser-chomesh-auto-backup-v1";
 
 // ── State ────────────────────────────────────────────────
 let state = { entries: [], version: "5.0", date: new Date().toISOString() };
@@ -26,6 +27,12 @@ let reportChart   = null;
 let categoryChart = null;
 let toastTimer    = null;
 let modalCb       = null;
+
+// ── Auto-backup state ─────────────────────────────────────
+let autoBackupEnabled         = false;
+let autoBackupIntervalMinutes = 10;
+let autoBackupTimer           = null;
+let autoBackupInFlight        = false;
 
 // ── Element Cache ─────────────────────────────────────────
 const el = id => document.getElementById(id);
@@ -137,6 +144,9 @@ const els = {
   excelParsedPreview: el("excel-parsed-preview"),
   quickImportBtn : el("quick-import-btn"),
   importExcelBtn : el("import-excel-btn"),
+  // auto-backup
+  autoBackupToggle     : el("auto-backup-toggle"),
+  autoBackupIntervalSel: el("auto-backup-interval"),
 };
 
 // ══════════════════════════════════════════════════════════
@@ -1504,7 +1514,89 @@ function bindEvents() {
   els.importExcelBtn.addEventListener("click",onImportExcel);
   els.quickImportBtn.addEventListener("click",onQuickImport);
 
+  // Auto-backup
+  if (els.autoBackupToggle) {
+    els.autoBackupToggle.addEventListener("change", () => {
+      autoBackupEnabled = els.autoBackupToggle.checked;
+      saveAutoBackupSettings();
+      applyAutoBackupUi();
+      if (autoBackupEnabled) startAutoBackupTimer();
+      else stopAutoBackupTimer();
+    });
+  }
+  if (els.autoBackupIntervalSel) {
+    els.autoBackupIntervalSel.addEventListener("change", () => {
+      autoBackupIntervalMinutes = Number(els.autoBackupIntervalSel.value) || 10;
+      saveAutoBackupSettings();
+      if (autoBackupEnabled) startAutoBackupTimer();
+    });
+  }
+
   setupDragDrop();
+}
+
+// ══════════════════════════════════════════════════════════
+//  AUTO-BACKUP
+// ══════════════════════════════════════════════════════════
+function loadAutoBackupSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(AUTO_BACKUP_KEY) || "{}");
+    autoBackupEnabled         = !!saved.enabled;
+    autoBackupIntervalMinutes = Number(saved.intervalMinutes) || 10;
+  } catch {
+    autoBackupEnabled         = false;
+    autoBackupIntervalMinutes = 10;
+  }
+}
+
+function saveAutoBackupSettings() {
+  localStorage.setItem(AUTO_BACKUP_KEY, JSON.stringify({
+    enabled: autoBackupEnabled,
+    intervalMinutes: autoBackupIntervalMinutes
+  }));
+}
+
+function applyAutoBackupUi() {
+  if (els.autoBackupToggle)      els.autoBackupToggle.checked = autoBackupEnabled;
+  if (els.autoBackupIntervalSel) {
+    els.autoBackupIntervalSel.value    = String(autoBackupIntervalMinutes);
+    els.autoBackupIntervalSel.disabled = !autoBackupEnabled;
+  }
+}
+
+async function runAutoBackup() {
+  if (autoBackupInFlight)    return;
+  if (!state.entries.length) return;
+  autoBackupInFlight = true;
+  try {
+    const data = JSON.stringify(state, null, 2);
+    if (typeof window !== "undefined" && window.electronAPI && window.electronAPI.isElectron) {
+      const result = await window.electronAPI.saveAutoBackup(data);
+      if (result && result.ok) showToast("💾 גיבוי אוטומטי נשמר", "success");
+      else                     showToast("⚠️ גיבוי אוטומטי נכשל",  "error");
+    } else {
+      // Browser fallback: trigger download
+      const stamp = new Date().toISOString().replace("T","_").replace(/[:.]/g,"-").slice(0,19);
+      const blob  = new Blob([data], { type: "application/json" });
+      const url   = URL.createObjectURL(blob);
+      const a     = Object.assign(document.createElement("a"), { href: url, download: `auto_backup_${stamp}.json` });
+      a.click(); URL.revokeObjectURL(url);
+      showToast("💾 גיבוי אוטומטי הורד", "success");
+    }
+  } finally {
+    autoBackupInFlight = false;
+  }
+}
+
+function startAutoBackupTimer() {
+  stopAutoBackupTimer();
+  if (!autoBackupEnabled) return;
+  runAutoBackup(); // immediate backup when first enabled
+  autoBackupTimer = setInterval(runAutoBackup, autoBackupIntervalMinutes * 60 * 1000);
+}
+
+function stopAutoBackupTimer() {
+  if (autoBackupTimer !== null) { clearInterval(autoBackupTimer); autoBackupTimer = null; }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1525,6 +1617,9 @@ function init() {
   renderReportYearOptions();
   rerender();
   updateUndoRedo();
+  loadAutoBackupSettings();
+  applyAutoBackupUi();
+  startAutoBackupTimer();
 }
 
 init();

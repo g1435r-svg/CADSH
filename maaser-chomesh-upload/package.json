@@ -26,6 +26,7 @@
       "styles.css",
       "app.js",
       "electron-main.js",
+      "preload.js",
       "vendor/**"
     ],
     "win": {
