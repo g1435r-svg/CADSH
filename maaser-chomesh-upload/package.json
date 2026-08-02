@@ -8,15 +8,15 @@
     "prestart": "npm run vendor:copy",
     "start": "electron .",
     "prebuild:exe": "npm run vendor:copy",
-    "build:exe": "electron-builder --win --x64"
+    "build:exe": "electron-builder --win --x64 --publish never"
   },
   "dependencies": {
     "chart.js": "4.4.3",
     "xlsx": "0.18.5"
   },
   "devDependencies": {
-    "electron": "^31.2.1",
-    "electron-builder": "^24.13.3"
+    "electron": "31.7.7",
+    "electron-builder": "24.13.3"
   },
   "build": {
     "appId": "com.local.maaserchomesh",
@@ -33,7 +33,13 @@
       "target": [
         "portable"
       ],
-      "artifactName": "MaaserChomesh.exe"
+      "artifactName": "MaaserChomesh.exe",
+      "signAndEditExecutable": false
     }
+  },
+  "author": "g1435r-svg",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/g1435r-svg/CADSH.git"
   }
 }
