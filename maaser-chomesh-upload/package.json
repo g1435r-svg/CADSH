@@ -8,7 +8,7 @@
     "prestart": "npm run vendor:copy",
     "start": "electron .",
     "prebuild:exe": "npm run vendor:copy",
-    "build:exe": "electron-builder --win --x64"
+    "build:exe": "electron-builder --win --x64 --publish never"
   },
   "dependencies": {
     "chart.js": "4.4.3",
