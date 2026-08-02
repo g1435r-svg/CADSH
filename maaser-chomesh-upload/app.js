@@ -147,6 +147,11 @@ const els = {
   // auto-backup
   autoBackupToggle     : el("auto-backup-toggle"),
   autoBackupIntervalSel: el("auto-backup-interval"),
+  openBackupFolderBtn  : el("open-backup-folder-btn"),
+  restoreBackupBtn     : el("restore-backup-btn"),
+  restoreModalOverlay  : el("restore-modal-overlay"),
+  restoreBackupList    : el("restore-backup-list"),
+  restoreModalCancel   : el("restore-modal-cancel"),
 };
 
 // ══════════════════════════════════════════════════════════
@@ -231,6 +236,14 @@ function toHebrewDate(greg) {
 
 function todayIso() { return new Date().toISOString().slice(0,10); }
 function nowIso()   { return new Date().toISOString(); }
+
+function debounce(fn, ms) {
+  let timer;
+  return function(...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), ms);
+  };
+}
 
 // ══════════════════════════════════════════════════════════
 //  TOAST
@@ -1367,10 +1380,17 @@ function bindEvents() {
 
   // Keyboard shortcuts
   document.addEventListener("keydown",e=>{
+    if (e.key==="Escape") {
+      if (!els.modalOverlay.hidden)        { e.preventDefault(); closeModal(); return; }
+      if (!els.restoreModalOverlay.hidden) { e.preventDefault(); closeRestoreModal(); return; }
+    }
     if (e.ctrlKey||e.metaKey) {
       if (e.key==="z"&&!e.shiftKey) { e.preventDefault(); undo(); }
       if (e.key==="y"||(e.key==="z"&&e.shiftKey)) { e.preventDefault(); redo(); }
       if (e.key==="s") { e.preventDefault(); if(activeSection==="dashboard") els.form.requestSubmit(); }
+      if (e.key==="e") { e.preventDefault(); exportBackup(); }
+      if (e.key==="n") { e.preventDefault(); switchSection("dashboard"); setTimeout(()=>els.description.focus(),50); }
+      if (e.key==="p") { e.preventDefault(); window.print(); }
     }
   });
 
@@ -1414,8 +1434,12 @@ function bindEvents() {
     renderTable();
   }));
 
-  // Filters
-  [els.search,els.filterYear,els.fromDate,els.toDate,els.filterCategory].forEach(el=>{
+  // Filters — search is debounced for performance; dropdowns respond immediately
+  const debouncedRenderTable = debounce(renderTable, 150);
+  if (els.search) {
+    els.search.addEventListener("input", debouncedRenderTable);
+  }
+  [els.filterYear,els.fromDate,els.toDate,els.filterCategory].forEach(el=>{
     if (!el) return;
     el.addEventListener("input",renderTable);
     el.addEventListener("change",renderTable);
@@ -1532,6 +1556,28 @@ function bindEvents() {
     });
   }
 
+  // Open backup folder & restore buttons (Electron only)
+  if (typeof window !== "undefined" && window.electronAPI && window.electronAPI.isElectron) {
+    if (els.openBackupFolderBtn) {
+      els.openBackupFolderBtn.classList.remove("hidden");
+      els.openBackupFolderBtn.addEventListener("click", () => {
+        window.electronAPI.openAutoBackupFolder();
+      });
+    }
+    if (els.restoreBackupBtn) {
+      els.restoreBackupBtn.classList.remove("hidden");
+      els.restoreBackupBtn.addEventListener("click", openRestoreModal);
+    }
+  }
+
+  // Restore modal
+  if (els.restoreModalCancel) els.restoreModalCancel.addEventListener("click", closeRestoreModal);
+  if (els.restoreModalOverlay) {
+    els.restoreModalOverlay.addEventListener("click", e => {
+      if (e.target === els.restoreModalOverlay) closeRestoreModal();
+    });
+  }
+
   setupDragDrop();
 }
 
@@ -1597,6 +1643,61 @@ function startAutoBackupTimer() {
 
 function stopAutoBackupTimer() {
   if (autoBackupTimer !== null) { clearInterval(autoBackupTimer); autoBackupTimer = null; }
+}
+
+// ══════════════════════════════════════════════════════════
+//  RESTORE AUTO-BACKUP MODAL (Electron only)
+// ══════════════════════════════════════════════════════════
+function closeRestoreModal() {
+  if (els.restoreModalOverlay) els.restoreModalOverlay.hidden = true;
+}
+
+async function openRestoreModal() {
+  if (!window.electronAPI || !window.electronAPI.listAutoBackups) return;
+  const result = await window.electronAPI.listAutoBackups();
+  if (!result || !result.ok) { showToast("לא ניתן לטעון רשימת גיבויים", "error"); return; }
+
+  const list = els.restoreBackupList;
+  if (!list) return;
+  if (!result.files.length) {
+    list.innerHTML = `<li style="color:var(--muted);padding:0.5rem 0;">אין גיבויים אוטומטיים עדיין.</li>`;
+  } else {
+    list.innerHTML = result.files.map(f => {
+      const label = f.replace(/^auto_backup_/, "").replace(/\.json$/, "").replace(/_/g, " ");
+      return `<li style="padding:0.3rem 0;border-bottom:1px solid var(--border);">
+        <button class="btn" data-filename="${escapeHtml(f)}" style="width:100%;text-align:start;font-size:0.82rem;">
+          🗓 ${escapeHtml(label)}
+        </button>
+      </li>`;
+    }).join("");
+    list.querySelectorAll("button[data-filename]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        closeRestoreModal();
+        await restoreAutoBackup(btn.dataset.filename);
+      });
+    });
+  }
+  els.restoreModalOverlay.hidden = false;
+}
+
+async function restoreAutoBackup(filename) {
+  if (!window.electronAPI || !window.electronAPI.readAutoBackup) return;
+  try {
+    const result = await window.electronAPI.readAutoBackup(filename);
+    if (!result || !result.ok) { showToast(`שגיאת קריאה: ${result && result.error || ""}`, "error"); return; }
+    const parsed = JSON.parse(result.data);
+    if (!parsed || !Array.isArray(parsed.entries)) { showToast("קובץ גיבוי לא תקין", "error"); return; }
+    const normalized = { entries: parsed.entries.map(normalizeEntry), version: parsed.version || "5.0", date: parsed.date || nowIso() };
+    const byId = new Map(state.entries.map(e => [String(e.id), e]));
+    pushHistory();
+    normalized.entries.forEach(item => byId.set(String(item.id), item));
+    state.entries = Array.from(byId.values());
+    state.date    = nowIso();
+    saveState(); rerender();
+    showToast(`🔄 שוחזרו ${normalized.entries.length} רשומות מגיבוי`, "success", 5000);
+  } catch (err) {
+    showToast(`שגיאת שחזור: ${err.message}`, "error");
+  }
 }
 
 // ══════════════════════════════════════════════════════════

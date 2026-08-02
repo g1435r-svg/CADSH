@@ -33,6 +33,37 @@ ipcMain.handle("save-auto-backup", async (_event, data) => {
 
 ipcMain.handle("get-auto-backup-folder", async () => getAutoBackupDir());
 
+ipcMain.handle("open-auto-backup-folder", async () => {
+  const dir = await getAutoBackupDir();
+  shell.openPath(dir);
+});
+
+ipcMain.handle("list-auto-backups", async () => {
+  try {
+    const dir   = await getAutoBackupDir();
+    const files = (await fs.promises.readdir(dir))
+      .filter(f => f.startsWith("auto_backup_") && f.endsWith(".json"))
+      .sort()
+      .reverse(); // newest first
+    return { ok: true, files };
+  } catch (err) {
+    return { ok: false, files: [], error: String(err) };
+  }
+});
+
+ipcMain.handle("read-auto-backup", async (_event, filename) => {
+  try {
+    // Validate filename to prevent path traversal
+    if (!/^auto_backup_[\w-]+\.json$/.test(filename)) throw new Error("שם קובץ לא תקין");
+    const dir      = await getAutoBackupDir();
+    const filePath = path.join(dir, filename);
+    const data     = await fs.promises.readFile(filePath, "utf8");
+    return { ok: true, data };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+});
+
 // ── Window ─────────────────────────────────────────────────────────────────
 function createWindow() {
   const win = new BrowserWindow({

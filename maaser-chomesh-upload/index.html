@@ -4,12 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ניהול מעשרות וחומש</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="./vendor/chart.umd.min.js"></script>
+  <script src="./vendor/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -45,7 +42,7 @@
     <div class="sidebar-tools">
       <button id="undo-btn" class="tool-btn" title="בטל (Ctrl+Z)">↩</button>
       <button id="redo-btn" class="tool-btn" title="שחזר (Ctrl+Y)">↪</button>
-      <button id="export-btn" class="tool-btn" title="גיבוי JSON">💾</button>
+      <button id="export-btn" class="tool-btn" title="גיבוי JSON (Ctrl+E)">💾</button>
       <label class="tool-btn" title="ייבוא גיבוי">📂<input id="import-input" type="file" accept="application/json" hidden /></label>
       <button id="export-csv-btn" class="tool-btn" title="ייצוא CSV">📄</button>
       <button id="export-xlsx-btn" class="tool-btn" title="ייצוא XLSX">📊</button>
@@ -63,6 +60,8 @@
         <option value="60">שעה</option>
       </select>
     </div>
+    <button id="open-backup-folder-btn" class="tool-btn hidden" title="פתח תיקיית גיבויים אוטומטיים" style="width:100%;margin-top:0.3rem;font-size:0.75rem;">📁 תיקיית גיבויים</button>
+    <button id="restore-backup-btn" class="tool-btn hidden" title="שחזר מגיבוי אוטומטי" style="width:100%;margin-top:0.2rem;font-size:0.75rem;">🔄 שחזר גיבוי</button>
   </div>
 </aside>
 
@@ -70,6 +69,18 @@
 
   <!-- Toast Notification -->
   <div id="toast" class="toast" aria-live="polite"></div>
+
+  <!-- Restore Auto-Backup Modal -->
+  <div id="restore-modal-overlay" class="modal-overlay" hidden>
+    <div class="modal" role="dialog" aria-label="שחזור גיבוי אוטומטי" style="min-width:340px;max-width:480px;">
+      <h3>שחזור גיבוי אוטומטי</h3>
+      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:0.7rem;">בחר קובץ גיבוי לשחזור. הנתונים הנוכחיים ימוזגו עם הגיבוי.</p>
+      <ul id="restore-backup-list" style="list-style:none;padding:0;max-height:260px;overflow-y:auto;margin-bottom:0.8rem;"></ul>
+      <div class="modal-btns">
+        <button id="restore-modal-cancel" class="btn">סגור</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal -->
   <div id="modal-overlay" class="modal-overlay" hidden>
