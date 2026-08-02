@@ -41,30 +41,36 @@ jobs:
           retention-days: 90
 
       - name: Create / update GitHub Release
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: latest-build
-          target_commitish: ${{ github.sha }}
-          name: "📦 גרסה אחרונה — מעשרות וחומש"
-          body: |
-            ## הורדה ישירה של קובץ EXE
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $releaseTitle = "📦 גרסה אחרונה — מעשרות וחומש"
+          @'
+          ## הורדה ישירה של קובץ EXE
 
-            לחץ על הקובץ **MaaserChomesh.exe** למטה להורדה ישירה.
+          לחץ על הקובץ **MaaserChomesh.exe** למטה להורדה ישירה.
 
-            **מה כולל האפליקציה:**
-            - 📊 לוח בקרה עם סיכום הכנסות, מעשר וחומש
-            - 📋 ניהול רשומות הכנסות ותרומות
-            - 📈 דוחות חודשיים / שנתיים עם גרפים
-            - ⬆️ ייבוא מאקסל (בנק, אשראי)
-            - 💾 גיבוי ייצוא / ייבוא JSON, CSV, XLSX
-            - 🌙 מצב לילה
-            - ↩ בטל / שחזר פעולה
-            - קטגוריות לתרומות, סטטיסטיקות מפורטות
+          **מה כולל האפליקציה:**
+          - 📊 לוח בקרה עם סיכום הכנסות, מעשר וחומש
+          - 📋 ניהול רשומות הכנסות ותרומות
+          - 📈 דוחות חודשיים / שנתיים עם גרפים
+          - ⬆️ ייבוא מאקסל (בנק, אשראי)
+          - 💾 גיבוי ייצוא / ייבוא JSON, CSV, XLSX
+          - 🌙 מצב לילה
+          - ↩ בטל / שחזר פעולה
+          - קטגוריות לתרומות, סטטיסטיקות מפורטות
 
-            > **לא נדרשת התקנה** — קובץ נייד (Portable)
+          > **לא נדרשת התקנה** — קובץ נייד (Portable)
 
-            ---
-            בנייה אוטומטית מ-commit: ${{ github.sha }}
-          files: maaser-chomesh-upload/dist/*.exe
-          make_latest: true
-          prerelease: false
+          ---
+          בנייה אוטומטית מ-commit: ${{ github.sha }}
+          '@ | Set-Content -Path release-notes.md -Encoding utf8
+
+          gh release view latest-build *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload latest-build dist/MaaserChomesh.exe --clobber
+            gh release edit latest-build --title $releaseTitle --notes-file release-notes.md
+          } else {
+            gh release create latest-build dist/MaaserChomesh.exe --title $releaseTitle --notes-file release-notes.md --target $env:GITHUB_SHA --latest
+          }
