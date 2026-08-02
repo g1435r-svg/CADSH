@@ -37,5 +37,9 @@
       "signAndEditExecutable": false
     }
   },
-  "author": "g1435r-svg"
+  "author": "g1435r-svg",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/g1435r-svg/CADSH.git"
+  }
 }
