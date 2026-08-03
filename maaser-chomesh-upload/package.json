@@ -27,7 +27,8 @@
       "app.js",
       "electron-main.js",
       "preload.js",
-      "vendor/**"
+      "vendor/**",
+      "node_modules/**/*"
     ],
     "win": {
       "target": [

@@ -180,7 +180,25 @@ function toIsoDate(value) {
   }
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   if (typeof value === "string") {
-    const m = value.trim().match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
+    const trimmed = value.trim();
+    const parts = trimmed.match(/^(\d{1,4})[\/.\- ](\d{1,2})[\/.\- ](\d{1,4})$/);
+    if (parts) {
+      let [,a,b,c] = parts.map(Number);
+      let d, mo, y;
+      if (String(parts[1]).length === 4) {
+        y = a; mo = b; d = c;
+      } else if (String(parts[3]).length === 4) {
+        d = a; mo = b; y = c;
+      } else if (a > 31) {
+        y = a; mo = b; d = c;
+      } else {
+        d = a; mo = b; y = c;
+      }
+      if (y < 100) y += y >= 70 ? 1900 : 2000;
+      if (d>=1&&d<=31&&mo>=1&&mo<=12&&y>=1900&&y<=2200)
+        return `${y}-${String(mo).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    }
+    const m = trimmed.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
     if (m) {
       let [,d,mo,y] = m.map(Number);
       if (y < 100) y += y >= 70 ? 1900 : 2000;
@@ -213,6 +231,22 @@ function addGeresh(t) {
   if (!t) return "";
   if (t.length===1) return t+"׳";
   return t.slice(0,-1)+"״"+t.slice(-1);
+}
+
+
+function looksLikeHeaderRow(row) {
+  const cells = Array.isArray(row) ? row : [];
+  if (!cells.length) return false;
+  const filled = cells.filter(v => String(v == null ? "" : v).trim() !== "");
+  if (!filled.length) return false;
+  const textish = filled.filter(v => {
+    if (v instanceof Date) return false;
+    if (typeof v === "number") return false;
+    const s = String(v).trim();
+    if (!s) return false;
+    return !toIsoDate(s);
+  });
+  return textish.length >= Math.max(1, Math.ceil(filled.length / 2));
 }
 
 function toHebrewDate(greg) {
@@ -1185,7 +1219,7 @@ function updateMappingOptions() {
 async function onExcelFileChosen(file) {
   excelFileName = file.name||"";
   const buf = await file.arrayBuffer();
-  excelWorkbook = XLSX.read(buf,{type:"array"});
+  excelWorkbook = XLSX.read(buf,{type:"array", cellDates:true});
   els.excelSheet.innerHTML = excelWorkbook.SheetNames.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
   setImportStep(2);
   loadSelectedSheetRows();
@@ -1202,9 +1236,11 @@ function loadSelectedSheetRows() {
   if (!rows.length) throw new Error("empty");
   excelRows = rows;
   const bestHeaderRow = detectBestHeaderRow(40);
-  els.excelHasHeader.value = "yes";
+  const hasDetectedHeader = bestHeaderRow > 0 || looksLikeHeaderRow(excelRows[bestHeaderRow] || []);
+  els.excelHasHeader.value = hasDetectedHeader ? "yes" : "no";
   els.excelStartRow.value  = String(bestHeaderRow+1);
-  manualSelectedRows = new Set(excelRows.slice(bestHeaderRow+1).map((_,i)=>i+1));
+  const bodyStart = hasDetectedHeader ? bestHeaderRow+1 : bestHeaderRow;
+  manualSelectedRows = new Set(excelRows.slice(bodyStart).map((_,i)=>i+1));
   updateMappingOptions();
   autoMapColumns();
   renderExcelPreview();
