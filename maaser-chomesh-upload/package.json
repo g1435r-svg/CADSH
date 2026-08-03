@@ -32,7 +32,7 @@
     ],
     "win": {
       "target": [
-        "portable"
+        "dir"
       ],
       "artifactName": "MaaserChomesh.exe",
       "signAndEditExecutable": false
