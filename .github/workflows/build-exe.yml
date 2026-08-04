@@ -19,51 +19,77 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Build portable EXE
+      - name: Build Windows app folder
         run: npm run build:exe
 
+      - name: Archive offline app package
+        shell: pwsh
+        run: Compress-Archive -Path dist/win-unpacked/* -DestinationPath dist/MaaserChomesh-win.zip -Force
+
+      - name: Resolve release file path
+        id: release_file
+        shell: pwsh
+        run: |
+          $file = Get-ChildItem -Path dist -Filter MaaserChomesh-win.zip | Select-Object -First 1
+          if (-not $file) {
+            throw "No release archive found under dist/."
+          }
+          "file_path=$($file.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
       - name: Upload artifact (always)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
-          name: MaaserChomesh-Windows-EXE
-          path: maaser-chomesh-upload/dist/*.exe
+          name: MaaserChomesh-Windows-App
+          path: maaser-chomesh-upload/dist/MaaserChomesh-win.zip
           if-no-files-found: error
           retention-days: 90
 
       - name: Create / update GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest-build
-          name: "📦 גרסה אחרונה — מעשרות וחומש"
-          body: |
-            ## הורדה ישירה של קובץ EXE
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: latest-build
+          RELEASE_NAME: "📦 גרסה אחרונה — מעשרות וחומש"
+          RELEASE_NOTES: |
+            ## הורדה ישירה של חבילת Windows
 
-            לחץ על הקובץ **MaaserChomesh.exe** למטה להורדה ישירה.
+            הורד את הקובץ **MaaserChomesh-win.zip**, חלץ את כל הקבצים, ואז הפעל את **MaaserChomesh.exe** מתוך התיקייה.
 
-            **מה כולל האפליקציה:**
+            **מה כולל הקובץ החדש:**
             - 📊 לוח בקרה עם סיכום הכנסות, מעשר וחומש
             - 📋 ניהול רשומות הכנסות ותרומות
             - 📈 דוחות חודשיים / שנתיים עם גרפים
-            - ⬆️ ייבוא מאקסל (בנק, אשראי)
+            - ⬆️ ייבוא אקסל אופליין (בנק, אשראי)
             - 💾 גיבוי ייצוא / ייבוא JSON, CSV, XLSX
+            - 🗑 מחיקת כל הנתונים עם גיבוי מלא לפני המחיקה
             - 🌙 מצב לילה
             - ↩ בטל / שחזר פעולה
             - קטגוריות לתרומות, סטטיסטיקות מפורטות
 
-            > **לא נדרשת התקנה** — קובץ נייד (Portable)
+            > **לא נדרשת התקנה** — פשוט חלץ והפעל, גם בלי אינטרנט.
 
             ---
             בנייה אוטומטית מ-commit: ${{ github.sha }}
-          files: maaser-chomesh-upload/dist/*.exe
-          make_latest: true
-          prerelease: false
+        run: |
+          $releaseFilePath = "${{ steps.release_file.outputs.file_path }}"
+          gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY 1>$null 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            gh release edit $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --title $env:RELEASE_NAME --notes $env:RELEASE_NOTES --latest
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } else {
+            gh release create $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title $env:RELEASE_NAME --notes $env:RELEASE_NOTES --latest
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          gh release upload $env:RELEASE_TAG $releaseFilePath --repo $env:GITHUB_REPOSITORY --clobber
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
