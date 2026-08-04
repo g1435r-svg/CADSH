@@ -8,7 +8,7 @@
     "prestart": "npm run vendor:copy",
     "start": "electron .",
     "prebuild:exe": "npm run vendor:copy",
-    "build:exe": "electron-builder --win --x64 --publish never"
+    "build:exe": "electron-builder --win portable --x64 --publish never"
   },
   "dependencies": {
     "chart.js": "4.4.3",
@@ -32,9 +32,9 @@
     ],
     "win": {
       "target": [
-        "dir"
+        "portable"
       ],
-      "artifactName": "MaaserChomesh.exe",
+      "artifactName": "MaaserChomesh-חדש.exe",
       "signAndEditExecutable": false
     }
   },

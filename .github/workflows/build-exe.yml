@@ -29,28 +29,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Windows app folder
+      - name: Build portable EXE
         run: npm run build:exe
-
-      - name: Archive offline app package
-        shell: pwsh
-        run: Compress-Archive -Path dist/win-unpacked/* -DestinationPath dist/MaaserChomesh-win.zip -Force
 
       - name: Resolve release file path
         id: release_file
         shell: pwsh
         run: |
-          $file = Get-ChildItem -Path dist -Filter MaaserChomesh-win.zip | Select-Object -First 1
+          $file = Get-ChildItem -Path dist -Filter MaaserChomesh-חדש.exe | Select-Object -First 1
           if (-not $file) {
-            throw "No release archive found under dist/."
+            throw "No release EXE found under dist/."
           }
           "file_path=$($file.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: Upload artifact (always)
         uses: actions/upload-artifact@v5
         with:
-          name: MaaserChomesh-Windows-App
-          path: maaser-chomesh-upload/dist/MaaserChomesh-win.zip
+          name: MaaserChomesh-Windows-EXE
+          path: maaser-chomesh-upload/dist/MaaserChomesh-חדש.exe
           if-no-files-found: error
           retention-days: 90
 
@@ -62,11 +58,11 @@ jobs:
           RELEASE_TAG: latest-build
           RELEASE_NAME: "📦 גרסה אחרונה — מעשרות וחומש"
           RELEASE_NOTES: |
-            ## הורדה ישירה של חבילת Windows
+            ## הורדה ישירה של קובץ EXE
 
-            הורד את הקובץ **MaaserChomesh-win.zip**, חלץ את כל הקבצים, ואז הפעל את **MaaserChomesh.exe** מתוך התיקייה.
+            לחץ על הקובץ **MaaserChomesh-חדש.exe** למטה להורדה ישירה.
 
-            **מה כולל הקובץ החדש:**
+            **מה כולל האפליקציה:**
             - 📊 לוח בקרה עם סיכום הכנסות, מעשר וחומש
             - 📋 ניהול רשומות הכנסות ותרומות
             - 📈 דוחות חודשיים / שנתיים עם גרפים
@@ -77,7 +73,7 @@ jobs:
             - ↩ בטל / שחזר פעולה
             - קטגוריות לתרומות, סטטיסטיקות מפורטות
 
-            > **לא נדרשת התקנה** — פשוט חלץ והפעל, גם בלי אינטרנט.
+            > **לא נדרשת התקנה** — קובץ נייד (Portable)
 
             ---
             בנייה אוטומטית מ-commit: ${{ github.sha }}
