@@ -7,6 +7,7 @@ const PROFILES_KEY     = "maaser-chomesh-import-profiles-v1";
 const PROF_SETTINGS_KEY= "maaser-chomesh-import-profile-settings-v1";
 const THEME_KEY        = "maaser-chomesh-theme-v1";
 const AUTO_BACKUP_KEY  = "maaser-chomesh-auto-backup-v1";
+const LEGACY_STORAGE_KEY = "maaser-chomesh-data-v1";
 
 // ── State ────────────────────────────────────────────────
 let state = { entries: [], version: "5.0", date: new Date().toISOString() };
@@ -179,7 +180,25 @@ function toIsoDate(value) {
   }
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   if (typeof value === "string") {
-    const m = value.trim().match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
+    const trimmed = value.trim();
+    const parts = trimmed.match(/^(\d{1,4})[\/.\- ](\d{1,2})[\/.\- ](\d{1,4})$/);
+    if (parts) {
+      let [,a,b,c] = parts.map(Number);
+      let d, mo, y;
+      if (String(parts[1]).length === 4) {
+        y = a; mo = b; d = c;
+      } else if (String(parts[3]).length === 4) {
+        d = a; mo = b; y = c;
+      } else if (a > 31) {
+        y = a; mo = b; d = c;
+      } else {
+        d = a; mo = b; y = c;
+      }
+      if (y < 100) y += y >= 70 ? 1900 : 2000;
+      if (d>=1&&d<=31&&mo>=1&&mo<=12&&y>=1900&&y<=2200)
+        return `${y}-${String(mo).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    }
+    const m = trimmed.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
     if (m) {
       let [,d,mo,y] = m.map(Number);
       if (y < 100) y += y >= 70 ? 1900 : 2000;
@@ -212,6 +231,22 @@ function addGeresh(t) {
   if (!t) return "";
   if (t.length===1) return t+"׳";
   return t.slice(0,-1)+"״"+t.slice(-1);
+}
+
+
+function looksLikeHeaderRow(row) {
+  const cells = Array.isArray(row) ? row : [];
+  if (!cells.length) return false;
+  const filled = cells.filter(v => String(v == null ? "" : v).trim() !== "");
+  if (!filled.length) return false;
+  const textish = filled.filter(v => {
+    if (v instanceof Date) return false;
+    if (typeof v === "number") return false;
+    const s = String(v).trim();
+    if (!s) return false;
+    return !toIsoDate(s);
+  });
+  return textish.length >= Math.max(1, Math.ceil(filled.length / 2));
 }
 
 function toHebrewDate(greg) {
@@ -320,7 +355,7 @@ function saveState() {
 }
 
 function loadState() {
-  const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem("maaser-chomesh-data-v1");
+  const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
   if (!raw) return;
   try {
     const parsed = JSON.parse(raw);
@@ -822,7 +857,7 @@ function renderYearlySummary() {
 //  EXPORT / IMPORT
 // ══════════════════════════════════════════════════════════
 function exportBackup() {
-  const blob = new Blob([JSON.stringify(state,null,2)], {type:"application/json"});
+  const blob = new Blob([JSON.stringify(buildBackupPayload(),null,2)], {type:"application/json"});
   const url  = URL.createObjectURL(blob);
   const a    = Object.assign(document.createElement("a"),{href:url,download:`backup_${todayIso()}.json`});
   a.click(); URL.revokeObjectURL(url);
@@ -830,11 +865,26 @@ function exportBackup() {
 }
 
 function exportBackupBeforeClear() {
-  const blob = new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const blob = new Blob([JSON.stringify(buildBackupPayload(),null,2)],{type:"application/json"});
   const url  = URL.createObjectURL(blob);
   const stamp= new Date().toISOString().replace(/[:]/g,"-").slice(0,19);
   const a    = Object.assign(document.createElement("a"),{href:url,download:`backup_before_clear_${stamp}.json`});
   a.click(); URL.revokeObjectURL(url);
+}
+
+function buildBackupPayload() {
+  return {
+    kind: "maaser-chomesh-backup",
+    exportedAt: nowIso(),
+    state: { ...state, entries: state.entries.map(normalizeEntry) },
+    profiles: importProfiles,
+    profileSettings,
+    theme: localStorage.getItem(THEME_KEY) || "light",
+    autoBackup: {
+      enabled: autoBackupEnabled,
+      intervalMinutes: autoBackupIntervalMinutes
+    }
+  };
 }
 
 function exportCsv() {
@@ -868,11 +918,39 @@ function exportXlsx() {
 async function importBackup(file) {
   const text   = await file.text();
   const parsed = JSON.parse(text);
+
+  if (parsed && parsed.kind === "maaser-chomesh-backup" && parsed.state && Array.isArray(parsed.state.entries)) {
+   pushHistory();
+   state = {
+     entries: parsed.state.entries.map(normalizeEntry),
+     version: parsed.state.version || "5.0",
+     date   : parsed.state.date || nowIso()
+   };
+   importProfiles = parsed.profiles && typeof parsed.profiles === "object" ? parsed.profiles : {};
+   profileSettings = {
+     defaultProfile: parsed.profileSettings?.defaultProfile || "",
+     autoProfileMode: parsed.profileSettings?.autoProfileMode === "off" ? "off" : "on"
+   };
+   autoBackupEnabled = !!parsed.autoBackup?.enabled;
+   autoBackupIntervalMinutes = Number(parsed.autoBackup?.intervalMinutes) || 10;
+   saveState();
+   saveProfiles();
+   saveProfileSettings();
+   saveAutoBackupSettings();
+   renderProfileOptions();
+   applyAutoBackupUi();
+   startAutoBackupTimer();
+   applyTheme(parsed.theme === "dark");
+   rerender();
+   showToast("📂 שוחזרו כל הנתונים, התבניות וההגדרות","success",5000);
+   return;
+  }
+
   if (!parsed||!Array.isArray(parsed.entries)) throw new Error("קובץ לא תקין");
   const normalized = {
-    entries: parsed.entries.map(normalizeEntry),
-    version: parsed.version||"5.0",
-    date   : parsed.date||nowIso()
+   entries: parsed.entries.map(normalizeEntry),
+   version: parsed.version||"5.0",
+   date   : parsed.date||nowIso()
   };
   const byId = new Map(state.entries.map(e=>[String(e.id),e]));
   pushHistory();
@@ -899,6 +977,37 @@ function loadProfileSettings() {
 }
 function saveProfiles()        { localStorage.setItem(PROFILES_KEY,JSON.stringify(importProfiles)); }
 function saveProfileSettings() { localStorage.setItem(PROF_SETTINGS_KEY,JSON.stringify(profileSettings)); }
+
+function clearAllAppData() {
+  stopAutoBackupTimer();
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(LEGACY_STORAGE_KEY);
+  localStorage.removeItem(PROFILES_KEY);
+  localStorage.removeItem(PROF_SETTINGS_KEY);
+  localStorage.removeItem(THEME_KEY);
+  localStorage.removeItem(AUTO_BACKUP_KEY);
+
+  state = { entries: [], version: "5.0", date: nowIso() };
+  undoStack = [];
+  redoStack = [];
+  importProfiles = {};
+  profileSettings = { defaultProfile: "", autoProfileMode: "on" };
+  excelRows = [];
+  excelWorkbook = null;
+  excelFileName = "";
+  manualSelectedRows = new Set();
+  autoBackupEnabled = false;
+  autoBackupIntervalMinutes = 10;
+
+  document.documentElement.dataset.theme = "";
+  if (els.themeIcon)  els.themeIcon.textContent = "🌙";
+  if (els.themeLabel) els.themeLabel.textContent = "מצב לילה";
+  applyAutoBackupUi();
+  renderProfileOptions();
+  resetForm();
+  rerender();
+  updateUndoRedo();
+}
 
 function renderProfileOptions() {
   const names = Object.keys(importProfiles).sort((a,b)=>a.localeCompare(b,"he"));
@@ -1110,7 +1219,7 @@ function updateMappingOptions() {
 async function onExcelFileChosen(file) {
   excelFileName = file.name||"";
   const buf = await file.arrayBuffer();
-  excelWorkbook = XLSX.read(buf,{type:"array"});
+  excelWorkbook = XLSX.read(buf,{type:"array", cellDates:true});
   els.excelSheet.innerHTML = excelWorkbook.SheetNames.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
   setImportStep(2);
   loadSelectedSheetRows();
@@ -1127,9 +1236,11 @@ function loadSelectedSheetRows() {
   if (!rows.length) throw new Error("empty");
   excelRows = rows;
   const bestHeaderRow = detectBestHeaderRow(40);
-  els.excelHasHeader.value = "yes";
+  const hasDetectedHeader = bestHeaderRow > 0 || looksLikeHeaderRow(excelRows[bestHeaderRow] || []);
+  els.excelHasHeader.value = hasDetectedHeader ? "yes" : "no";
   els.excelStartRow.value  = String(bestHeaderRow+1);
-  manualSelectedRows = new Set(excelRows.slice(bestHeaderRow+1).map((_,i)=>i+1));
+  const bodyStart = hasDetectedHeader ? bestHeaderRow+1 : bestHeaderRow;
+  manualSelectedRows = new Set(excelRows.slice(bodyStart).map((_,i)=>i+1));
   updateMappingOptions();
   autoMapColumns();
   renderExcelPreview();
@@ -1395,12 +1506,10 @@ function bindEvents() {
 
   // Clear data
   els.clearBtn.addEventListener("click",()=>{
-    showModal("ניקוי כל הנתונים","כל הרשומות ימחקו. גיבוי אוטומטי ייצא לפני המחיקה. להמשיך?",()=>{
+    showModal("מחיקת כל הנתונים","כל הרשומות, התבניות וההגדרות המקומיות יימחקו. יירד קודם גיבוי מלא לשחזור. להמשיך?",()=>{
       exportBackupBeforeClear();
-      pushHistory();
-      state.entries=[];
-      saveState(); resetForm(); rerender();
-      showToast("כל הנתונים נמחקו (גיבוי אוטומטי נשמר)","info",5000);
+      clearAllAppData();
+      showToast("כל הנתונים המקומיים נמחקו ונשמר גיבוי מלא לשחזור","info",5000);
     });
   });
 

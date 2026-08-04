@@ -2,7 +2,7 @@ $node = Get-Command node -ErrorAction SilentlyContinue
 $npm = Get-Command npm -ErrorAction SilentlyContinue
 
 if (-not $node -or -not $npm) {
-  Write-Host "Node.js/npm not found. Install Node.js 20+ and run again." -ForegroundColor Red
+  Write-Host "Node.js/npm not found. Install Node.js 24+ and run again." -ForegroundColor Red
   exit 1
 }
 
