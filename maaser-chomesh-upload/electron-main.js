@@ -34,8 +34,13 @@ ipcMain.handle("save-auto-backup", async (_event, data) => {
 ipcMain.handle("get-auto-backup-folder", async () => getAutoBackupDir());
 
 ipcMain.handle("open-auto-backup-folder", async () => {
-  const dir = await getAutoBackupDir();
-  shell.openPath(dir);
+  try {
+    const dir = await getAutoBackupDir();
+    const error = await shell.openPath(dir);
+    return error ? { ok: false, error } : { ok: true };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
 });
 
 ipcMain.handle("list-auto-backups", async () => {
