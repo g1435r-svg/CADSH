@@ -36,7 +36,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MaaserChomesh-Windows-EXE
-          path: maaser-chomesh-upload/dist/*.exe
+          path: maaser-chomesh-upload/dist/MaaserChomesh-חדש.exe
           if-no-files-found: error
           retention-days: 90
 
@@ -49,7 +49,7 @@ jobs:
           @'
           ## הורדה ישירה של קובץ EXE
 
-          לחץ על הקובץ **MaaserChomesh.exe** למטה להורדה ישירה.
+          לחץ על הקובץ **MaaserChomesh-חדש.exe** למטה להורדה ישירה.
 
           **מה כולל האפליקציה:**
           - 📊 לוח בקרה עם סיכום הכנסות, מעשר וחומש
@@ -69,8 +69,8 @@ jobs:
 
           gh release view latest-build *> $null
           if ($LASTEXITCODE -eq 0) {
-            gh release upload latest-build dist/MaaserChomesh.exe --clobber
+            gh release upload latest-build dist/MaaserChomesh-חדש.exe --clobber
             gh release edit latest-build --title $releaseTitle --notes-file release-notes.md
           } else {
-            gh release create latest-build dist/MaaserChomesh.exe --title $releaseTitle --notes-file release-notes.md --target $env:GITHUB_SHA --latest
+            gh release create latest-build dist/MaaserChomesh-חדש.exe --title $releaseTitle --notes-file release-notes.md --target $env:GITHUB_SHA --latest
           }

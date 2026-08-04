@@ -6,7 +6,7 @@
 
 ## ⬇️ הורדה ישירה
 
-**[📥 הורד את הגרסה האחרונה (EXE)](https://github.com/g1435r-svg/CADSH/releases/tag/latest-build)**
+**[📥 הורד את הגרסה החדשה (EXE)](https://github.com/g1435r-svg/CADSH/releases/tag/latest-build)**
 
 > קובץ נייד (Portable) — לא נדרשת התקנה. פשוט פתח והתחל לעבוד.
 
