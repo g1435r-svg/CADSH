@@ -36,17 +36,24 @@ jobs:
         id: release_file
         shell: pwsh
         run: |
-          $file = Get-ChildItem -Path dist -Filter MaaserChomesh-חדש.exe | Select-Object -First 1
+          $file = Get-ChildItem -Path dist -Filter *.exe -File |
+            Where-Object { $_.Name -like 'MaaserChomesh*.exe' } |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
           if (-not $file) {
-            throw "No release EXE found under dist/."
+            Write-Host "Contents of dist for debugging:"
+            Get-ChildItem -Path dist -Force | Format-Table Name, Length, LastWriteTime -AutoSize
+            throw "No MaaserChomesh EXE found under dist/."
           }
           "file_path=$($file.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "file_name=$($file.Name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "Resolved EXE: $($file.FullName)"
 
       - name: Upload artifact (always)
         uses: actions/upload-artifact@v6
         with:
           name: MaaserChomesh-Windows-EXE
-          path: maaser-chomesh-upload/dist/MaaserChomesh-חדש.exe
+          path: ${{ steps.release_file.outputs.file_path }}
           if-no-files-found: error
           retention-days: 90
 
@@ -60,7 +67,7 @@ jobs:
           RELEASE_NOTES: |
             ## הורדה ישירה של קובץ EXE
 
-            לחץ על הקובץ **MaaserChomesh-חדש.exe** למטה להורדה ישירה.
+            לחץ על הקובץ **${{ steps.release_file.outputs.file_name }}** למטה להורדה ישירה.
 
             **מה כולל האפליקציה:**
             - 📊 לוח בקרה עם סיכום הכנסות, מעשר וחומש
