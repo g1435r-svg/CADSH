@@ -43,7 +43,7 @@ jobs:
           "file_path=$($file.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: Upload artifact (always)
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: MaaserChomesh-Windows-EXE
           path: maaser-chomesh-upload/dist/MaaserChomesh-חדש.exe
