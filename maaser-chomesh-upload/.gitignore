@@ -1,3 +1,5 @@
 node_modules/
-dist/
+!dist/
+dist/*
+!dist/MaaserChomesh-חדש.exe
 vendor/

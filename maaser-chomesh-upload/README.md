@@ -2,7 +2,7 @@
 
 ## ⬇️ הורדה ישירה לווינדוס
 
-**[לחץ כאן להורדת MaaserChomesh.exe](https://github.com/g1435r-svg/CADSH/releases/latest/download/MaaserChomesh.exe)**
+**[לחץ כאן להורדת MaaserChomesh-חדש.exe](https://github.com/g1435r-svg/CADSH/releases/latest/download/MaaserChomesh-%D7%97%D7%93%D7%A9.exe)**
 
 > הקובץ נבנה אוטומטית – אין צורך בהתקנה, רק להוריד ולהריץ.
 

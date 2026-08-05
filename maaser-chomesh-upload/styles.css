@@ -41,7 +41,7 @@
   --donation-bg: #e0faf3;
 
   --transition: 0.2s ease;
-  --font: "Heebo", "Segoe UI", Arial, sans-serif;
+  --font: "Segoe UI", Arial, sans-serif;
 }
 
 [data-theme="dark"] {
